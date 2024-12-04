@@ -28,7 +28,7 @@ export async function checkSupabaseSession() {
   return session;
 }
 
-async function gitHubLoginButtonHandler(scopes = "public_repo read:org") {
+async function gitHubLoginButtonHandler(scopes = "public_repo read:org notifications") {
   const redirectTo = window.location.href;
   const { error } = await supabase.auth.signInWithOAuth({
     provider: "github",
