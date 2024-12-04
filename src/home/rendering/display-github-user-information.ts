@@ -1,12 +1,10 @@
-import { isOrgMemberWithoutScope } from "../getters/get-github-access-token";
 import { GitHubUser } from "../github-types";
 import { toolbar } from "../ready-toolbar";
 import { renderErrorInModal } from "./display-popup-modal";
-import { authenticationElement, getSupabase, renderAugmentAccessButton } from "./render-github-login-button";
+import { authenticationElement, getSupabase } from "./render-github-login-button";
 
 export async function displayGitHubUserInformation(gitHubUser: GitHubUser) {
   const authenticatedDivElement = document.createElement("div");
-  const containerDivElement = document.createElement("div");
   authenticatedDivElement.id = "authenticated";
   authenticatedDivElement.classList.add("user-container");
   if (!toolbar) throw new Error("toolbar not found");
@@ -36,11 +34,6 @@ export async function displayGitHubUserInformation(gitHubUser: GitHubUser) {
     }
     window.location.replace("/");
   });
-
-  if (await isOrgMemberWithoutScope()) {
-    const accessButton = renderAugmentAccessButton();
-    containerDivElement.appendChild(accessButton);
-  }
 
   authenticationElement.appendChild(authenticatedDivElement);
   toolbar.setAttribute("data-authenticated", "true");
