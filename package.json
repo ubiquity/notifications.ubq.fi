@@ -1,7 +1,7 @@
 {
-  "name": "@ubiquity/work.ubq.fi",
+  "name": "@ubiquity/nofications.ubq.fi",
   "version": "1.0.0",
-  "description": "The DevPool Directory for UbiquityOS.",
+  "description": "The GitHub notifications viewer for UbiquityOS.",
   "main": "build/index.ts",
   "author": "Ubiquity DAO",
   "license": "MIT",
