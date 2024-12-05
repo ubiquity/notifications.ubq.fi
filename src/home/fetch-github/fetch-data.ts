@@ -24,8 +24,14 @@ async function fetchNotifications(): Promise<GitHubNotifications | null> {
 // Pre-filter notifications by general rules (repo filtering and ignoring CI activity)
 function preFilterNotifications(notifications: GitHubNotification[]): GitHubNotifications {
   return notifications.filter((notification) => {
-    // Ignore CI activity notifications
-    if (notification.reason === "ci_activity") return false;
+    // Ignore based on reason
+    if (
+      ["author", "comment", "ci_activity", "invitation", "member_feature_requested", "security_advisory_credit", "state_change", "team_mention"].includes(
+        notification.reason
+      )
+    ) {
+      return false;
+    }
 
     // Ignore notifications from repos that are not relevant
     const repoName = notification.repository.full_name.split("/")[0];
