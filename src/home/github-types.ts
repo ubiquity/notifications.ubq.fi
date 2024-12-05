@@ -19,9 +19,9 @@ export type GitHubPullRequest = RestEndpointMethodTypes["pulls"]["get"]["respons
 export type GitHubNotifications = RestEndpointMethodTypes["activity"]["listNotificationsForAuthenticatedUser"]["response"]["data"];
 export type GitHubNotification = GitHubNotifications[0];
 export type GitHubAggregated = {
-  "issue": GitHubIssue,
-  "pullRequest": GitHubPullRequest, 
-  "notification": GitHubNotification
+  issue: GitHubIssue;
+  pullRequest: GitHubPullRequest;
+  notification: GitHubNotification;
 };
 export type GitHubLabel =
   | {

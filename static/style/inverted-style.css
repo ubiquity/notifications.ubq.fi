@@ -375,7 +375,7 @@
   }
   #authentication {
     position: absolute;
-    right:8px;
+    right: 8px;
     cursor: pointer;
     vertical-align: middle;
     flex: 0 0 auto;
@@ -541,7 +541,7 @@
   .preview th {
     font-weight: bold;
   }
-  .preview th, 
+  .preview th,
   .preview td {
     padding: 6px 13px;
   }
@@ -947,7 +947,7 @@
     /* Prevent content from going under bottom bar */
     /* padding-bottom: 48px; */
   }
-  
+
   .preview-body::-webkit-scrollbar {
     width: 2px;
   }

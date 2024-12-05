@@ -12,7 +12,9 @@ export function renderNotifications(tasks: GitHubNotifications, skipAnimation: b
     notificationsContainer.classList.remove("ready");
     notificationsContainer.innerHTML = "";
   }
-  const existingIssueIds = new Set(Array.from(notificationsContainer.querySelectorAll(".issue-element-inner")).map((element) => element.getAttribute("data-issue-id")));
+  const existingIssueIds = new Set(
+    Array.from(notificationsContainer.querySelectorAll(".issue-element-inner")).map((element) => element.getAttribute("data-issue-id"))
+  );
 
   let delay = 0;
   const baseDelay = 1000 / 15; // Base delay in milliseconds
@@ -53,7 +55,14 @@ function everyNewNotification({ notification, notificationsContainer }: { notifi
   return issueWrapper;
 }
 
-function setUpIssueElement(issueElement: HTMLDivElement, task: GitHubNotifications, organizationName: string, repositoryName: string, labels: string[], url: string) {
+function setUpIssueElement(
+  issueElement: HTMLDivElement,
+  task: GitHubNotifications,
+  organizationName: string,
+  repositoryName: string,
+  labels: string[],
+  url: string
+) {
   const image = `<img />`;
 
   issueElement.innerHTML = `
