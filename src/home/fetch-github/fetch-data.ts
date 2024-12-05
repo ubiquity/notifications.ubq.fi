@@ -44,6 +44,11 @@ function filterPullRequestNotifications(notifications: GitHubNotification[]): Gi
   return preFilterNotifications(notifications).filter((notification) => notification.subject.type === "PullRequest");
 }
 
+// Function to filter issue notifications
+function filterIssueNotifications(notifications: GitHubNotification[]): GitHubNotifications {
+  return preFilterNotifications(notifications).filter((notification) => notification.subject.type === "Issue");
+}
+
 // Function to fetch the pull request details
 async function fetchPullRequestDetails(pullRequestUrl: string): Promise<GitHubPullRequest | null> {
   const providerToken = await getGitHubAccessToken();
@@ -54,6 +59,20 @@ async function fetchPullRequestDetails(pullRequestUrl: string): Promise<GitHubPu
     return pullRequest;
   } catch (error) {
     console.warn("Error fetching pull request:", error);
+  }
+  return null;
+}
+
+// Function to fetch the issue details
+async function fetchIssueDetails(issueUrl: string): Promise<GitHubIssue | null> {
+  const providerToken = await getGitHubAccessToken();
+  const octokit = new Octokit({ auth: providerToken });
+
+  try {
+    const issue = (await octokit.request(`GET ${issueUrl}`)).data as GitHubIssue;
+    return issue;
+  } catch (error) {
+    console.warn("Error fetching issue:", error);
   }
   return null;
 }
@@ -99,6 +118,28 @@ export async function fetchPullRequestNotifications(): Promise<GitHubAggregated[
     aggregatedData.push({ notification, pullRequest, issue });
   }
 
-  console.log("aggregatedData", aggregatedData);
+  console.log("pullRequestNotifications", aggregatedData);
+  return aggregatedData;
+}
+
+// Main function to fetch issue notifications with related issue data
+export async function fetchIssueNotifications(): Promise<GitHubAggregated[] | null> {
+  const notifications = await fetchNotifications();
+  if (!notifications) return null;
+
+  const aggregatedData: GitHubAggregated[] = [];
+  const filteredNotifications = filterIssueNotifications(notifications);
+
+  for (const notification of filteredNotifications) {
+    const issueUrl = notification.subject.url;
+    const issue = await fetchIssueDetails(issueUrl);
+    if (!issue || issue.state === "closed") {
+      continue; // Skip closed issues
+    }
+
+    aggregatedData.push({ notification, pullRequest: null, issue });
+  }
+
+  console.log("issueNotifications", aggregatedData);
   return aggregatedData;
 }

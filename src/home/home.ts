@@ -1,7 +1,7 @@
 import { grid } from "../the-grid";
 import { authentication } from "./authentication";
 import { displayNotifications } from "./fetch-github/fetch-and-display-previews";
-import { fetchPullRequestNotifications } from "./fetch-github/fetch-data";
+import { fetchIssueNotifications, fetchPullRequestNotifications } from "./fetch-github/fetch-data";
 import { readyToolbar } from "./ready-toolbar";
 import { renderServiceMessage } from "./render-service-message";
 import { renderErrorInModal } from "./rendering/display-popup-modal";
@@ -29,6 +29,7 @@ if (!notificationsContainer) {
 }
 
 export const pullRequestNotifications = void fetchPullRequestNotifications();
+export const issueNotifications = void fetchIssueNotifications();
 
 void (async function home() {
   void authentication();
