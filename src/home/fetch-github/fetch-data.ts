@@ -10,7 +10,7 @@ async function fetchNotifications(): Promise<GitHubNotifications | null> {
   const octokit = new Octokit({ auth: providerToken });
 
   try {
-    const notifications = ((await octokit.request("GET /notifications")).data) as GitHubNotifications;
+    const notifications = (await octokit.request("GET /notifications")).data as GitHubNotifications;
     return notifications;
   } catch (error) {
     if (error instanceof RequestError && error.status === 403) {
@@ -23,19 +23,19 @@ async function fetchNotifications(): Promise<GitHubNotifications | null> {
 
 // Pre-filter notifications by general rules (repo filtering and ignoring CI activity)
 function preFilterNotifications(notifications: GitHubNotification[]): GitHubNotifications {
-  return notifications.filter(notification => {
+  return notifications.filter((notification) => {
     // Ignore CI activity notifications
-    if (notification.reason === 'ci_activity') return false;
+    if (notification.reason === "ci_activity") return false;
 
     // Ignore notifications from repos that are not relevant
-    const repoName = notification.repository.full_name.split('/')[0];
-    return ['ubiquity', 'ubiquity-os', 'ubiquity-os-marketplace'].includes(repoName);
+    const repoName = notification.repository.full_name.split("/")[0];
+    return ["ubiquity", "ubiquity-os", "ubiquity-os-marketplace"].includes(repoName);
   });
 }
 
 // Function to filter pull request notifications
 function filterPullRequestNotifications(notifications: GitHubNotification[]): GitHubNotifications {
-  return preFilterNotifications(notifications).filter(notification => notification.subject.type === 'PullRequest');
+  return preFilterNotifications(notifications).filter((notification) => notification.subject.type === "PullRequest");
 }
 
 // Function to fetch the pull request details
@@ -44,7 +44,7 @@ async function fetchPullRequestDetails(pullRequestUrl: string): Promise<GitHubPu
   const octokit = new Octokit({ auth: providerToken });
 
   try {
-    const pullRequest = ((await octokit.request(`GET ${pullRequestUrl}`)).data) as GitHubPullRequest;
+    const pullRequest = (await octokit.request(`GET ${pullRequestUrl}`)).data as GitHubPullRequest;
     return pullRequest;
   } catch (error) {
     console.warn("Error fetching pull request:", error);
@@ -64,7 +64,7 @@ async function fetchIssueFromPullRequest(pullRequest: GitHubPullRequest): Promis
   const issueNumber = issueNumberMatch[1];
   const issueUrl = pullRequest.issue_url.replace(/issues\/\d+$/, `issues/${issueNumber}`);
   try {
-    const issue = ((await octokit.request(`GET ${issueUrl}`)).data) as GitHubIssue;
+    const issue = (await octokit.request(`GET ${issueUrl}`)).data as GitHubIssue;
     return issue;
   } catch (error) {
     console.warn("Error fetching issue:", error);
