@@ -2,7 +2,7 @@ import { Octokit } from "@octokit/rest";
 import { getGitHubAccessToken } from "../getters/get-github-access-token";
 import { getImageFromCache, saveImageToCache } from "../getters/get-indexed-db";
 import { renderErrorInModal } from "../rendering/display-popup-modal";
-import { organizationImageCache } from "./fetch-notifications";
+import { organizationImageCache } from "./fetch-data";
 import { GitHubNotifications } from "../github-types";
 import { notifications } from "../home";
 

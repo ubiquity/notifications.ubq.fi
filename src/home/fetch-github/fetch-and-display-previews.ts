@@ -1,5 +1,5 @@
 import { GitHubNotifications } from "../github-types";
-import { notifications } from "../home";
+import { pullRequestNotifications } from "../home";
 import { applyAvatarsToIssues, renderNotifications } from "../rendering/render-github-issues";
 import { renderOrgHeaderLabel } from "../rendering/render-org-header";
 import { closeModal } from "../rendering/render-preview-modal";
@@ -84,7 +84,7 @@ export async function displayNotifications({
   //const sortedIssues = sortIssuesController(cachedTasks, sorting, options);
   //let sortedAndFiltered = sortedIssues.filter(getProposalsOnlyFilter(isProposalOnlyViewer));
   //sortedAndFiltered = filterIssuesByOrganization(sortedAndFiltered);
-  renderNotifications(notifications, skipAnimation);
+  renderNotifications(pullRequestNotifications, skipAnimation);
   applyAvatarsToIssues();
 }
 

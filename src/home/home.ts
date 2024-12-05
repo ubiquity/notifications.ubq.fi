@@ -1,7 +1,7 @@
 import { grid } from "../the-grid";
 import { authentication } from "./authentication";
 import { displayNotifications } from "./fetch-github/fetch-and-display-previews";
-import { fetchNotifications } from "./fetch-github/fetch-notifications";
+import { fetchPullRequestNotifications } from "./fetch-github/fetch-data";
 import { readyToolbar } from "./ready-toolbar";
 import { renderServiceMessage } from "./render-service-message";
 import { renderErrorInModal } from "./rendering/display-popup-modal";
@@ -28,12 +28,12 @@ if (!notificationsContainer) {
   throw new Error("Could not find issues container");
 }
 
-export const notifications = void fetchNotifications();
+export const pullRequestNotifications = void fetchPullRequestNotifications();
 
 void (async function home() {
   void authentication();
-  //  void readyToolbar();
-  void displayNotifications();
+  void readyToolbar();
+  //  void displayNotifications();
 
   // Register service worker for PWA
   // if ("serviceWorker" in navigator) {

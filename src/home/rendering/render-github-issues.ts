@@ -1,5 +1,5 @@
 import { marked } from "marked";
-import { organizationImageCache } from "../fetch-github/fetch-notifications";
+import { organizationImageCache } from "../fetch-github/fetch-data";
 import { GitHubNotification, GitHubNotifications } from "../github-types";
 import { renderErrorInModal } from "./display-popup-modal";
 import { closeModal, modal, modalBodyInner, bottomBar, titleAnchor, titleHeader, bottomBarClearLabels } from "./render-preview-modal";
