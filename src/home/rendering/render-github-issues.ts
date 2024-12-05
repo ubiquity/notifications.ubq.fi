@@ -1,26 +1,25 @@
 import { marked } from "marked";
-import { organizationImageCache } from "../fetch-github/fetch-issues-full";
-import { GitHubIssue } from "../github-types";
-import { taskManager } from "../home";
+import { organizationImageCache } from "../fetch-github/fetch-notifications";
+import { GitHubNotification, GitHubNotifications } from "../github-types";
 import { renderErrorInModal } from "./display-popup-modal";
 import { closeModal, modal, modalBodyInner, bottomBar, titleAnchor, titleHeader, bottomBarClearLabels } from "./render-preview-modal";
 import { setupKeyboardNavigation } from "./setup-keyboard-navigation";
 import { waitForElement } from "./utils";
+import { notificationsContainer } from "../home";
 
-export function renderGitHubIssues(tasks: GitHubIssue[], skipAnimation: boolean) {
-  const container = taskManager.getContainer();
-  if (container.classList.contains("ready")) {
-    container.classList.remove("ready");
-    container.innerHTML = "";
+export function renderNotifications(tasks: GitHubNotifications, skipAnimation: boolean) {
+  if (notificationsContainer.classList.contains("ready")) {
+    notificationsContainer.classList.remove("ready");
+    notificationsContainer.innerHTML = "";
   }
-  const existingIssueIds = new Set(Array.from(container.querySelectorAll(".issue-element-inner")).map((element) => element.getAttribute("data-issue-id")));
+  const existingIssueIds = new Set(Array.from(notificationsContainer.querySelectorAll(".issue-element-inner")).map((element) => element.getAttribute("data-issue-id")));
 
   let delay = 0;
   const baseDelay = 1000 / 15; // Base delay in milliseconds
 
   for (const task of tasks) {
     if (!existingIssueIds.has(task.id.toString())) {
-      const issueWrapper = everyNewIssue({ gitHubIssue: task, container });
+      const issueWrapper = everyNewNotification({ notification: task, notificationsContainer });
       if (issueWrapper) {
         if (skipAnimation) {
           issueWrapper.classList.add("active");
@@ -31,30 +30,30 @@ export function renderGitHubIssues(tasks: GitHubIssue[], skipAnimation: boolean)
       }
     }
   }
-  container.classList.add("ready");
+  notificationsContainer.classList.add("ready");
   // Call this function after the issues have been rendered
-  setupKeyboardNavigation(container);
+  setupKeyboardNavigation(notificationsContainer);
 
   // Scroll to the top of the page
   window.scrollTo({ top: 0 });
 }
 
-function everyNewIssue({ gitHubIssue, container }: { gitHubIssue: GitHubIssue; container: HTMLDivElement }) {
+function everyNewNotification({ notification, notificationsContainer }: { notification: GitHubNotification; notificationsContainer: HTMLDivElement }) {
   const issueWrapper = document.createElement("div");
   const issueElement = document.createElement("div");
-  issueElement.setAttribute("data-issue-id", gitHubIssue.id.toString());
+  issueElement.setAttribute("data-issue-id", notification.id.toString());
   issueElement.classList.add("issue-element-inner");
 
-  const labels = parseAndGenerateLabels(gitHubIssue);
-  const [organizationName, repositoryName] = gitHubIssue.repository_url.split("/").slice(-2);
-  setUpIssueElement(issueElement, gitHubIssue, organizationName, repositoryName, labels, gitHubIssue.html_url);
+  const labels = parseAndGenerateLabels(notification);
+  const [organizationName, repositoryName] = notification.repository.url.split("/").slice(-2);
+  setUpIssueElement(issueElement, notification, organizationName, repositoryName, labels, notification.html_url);
   issueWrapper.appendChild(issueElement);
 
-  container.appendChild(issueWrapper);
+  notificationsContainer.appendChild(issueWrapper);
   return issueWrapper;
 }
 
-function setUpIssueElement(issueElement: HTMLDivElement, task: GitHubIssue, organizationName: string, repositoryName: string, labels: string[], url: string) {
+function setUpIssueElement(issueElement: HTMLDivElement, task: GitHubNotifications, organizationName: string, repositoryName: string, labels: string[], url: string) {
   const image = `<img />`;
 
   issueElement.innerHTML = `
@@ -69,7 +68,7 @@ function setUpIssueElement(issueElement: HTMLDivElement, task: GitHubIssue, orga
       const issueWrapper = issueElement.parentElement;
 
       if (!issueWrapper) {
-        throw new Error("No issue container found");
+        throw new Error("No issue notificationsContainer found");
       }
 
       Array.from(issueWrapper.parentElement?.children || []).forEach((sibling) => {
@@ -90,7 +89,7 @@ function setUpIssueElement(issueElement: HTMLDivElement, task: GitHubIssue, orga
   });
 }
 
-function parseAndGenerateLabels(task: GitHubIssue) {
+function parseAndGenerateLabels(task: GitHubNotifications) {
   type LabelKey = "Price: " | "Time: " | "Priority: ";
 
   const labelOrder: Record<LabelKey, number> = { "Price: ": 1, "Time: ": 2, "Priority: ": 3 };
@@ -139,12 +138,12 @@ function parseAndGenerateLabels(task: GitHubIssue) {
 }
 
 // Function to update and show the preview
-function previewIssue(gitHubIssue: GitHubIssue) {
-  void viewIssueDetails(gitHubIssue);
+function previewIssue(notification: GitHubNotifications) {
+  void viewIssueDetails(notification);
 }
 
 // Loads the issue preview modal with the issue details
-export async function viewIssueDetails(full: GitHubIssue) {
+export async function viewIssueDetails(full: GitHubNotifications) {
   // Update the title and body for the new issue
   titleHeader.textContent = full.title;
   titleAnchor.href = full.html_url;
@@ -214,7 +213,7 @@ export function loadIssueFromUrl() {
   }
 
   // If ID doesn't exist, don't load issue
-  const issue: GitHubIssue = taskManager.getGitHubIssueById(Number(issueID)) as GitHubIssue;
+  const issue: GitHubNotifications = taskManager.getnotificationById(Number(issueID)) as GitHubNotifications;
 
   if (!issue) {
     const newURL = new URL(window.location.href);
@@ -227,8 +226,8 @@ export function loadIssueFromUrl() {
 }
 
 export function applyAvatarsToIssues() {
-  const container = taskManager.getContainer();
-  const issueElements = Array.from(container.querySelectorAll(".issue-element-inner"));
+  const notificationsContainer = taskManager.getnotificationsContainer();
+  const issueElements = Array.from(notificationsContainer.querySelectorAll(".issue-element-inner"));
 
   issueElements.forEach((issueElement) => {
     const orgName = issueElement.querySelector(".organization-name")?.textContent;

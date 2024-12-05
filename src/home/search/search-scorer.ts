@@ -1,11 +1,11 @@
-import { GitHubIssue } from "../github-types";
+import { GitHubNotifications } from "../github-types";
 import { SearchConfig, SearchResult } from "../types/search-types";
 import { StringSimilarity } from "./string-similarity";
 
 export class SearchScorer {
   constructor(private _config: SearchConfig) {}
 
-  public calculateTitleScore(issue: GitHubIssue, searchTerms: string[], matchDetails: SearchResult["matchDetails"]): number {
+  public calculateTitleScore(issue: GitHubNotifications, searchTerms: string[], matchDetails: SearchResult["matchDetails"]): number {
     let score = 0;
     const title = issue.title.toLowerCase();
     const words = title.split(/\s+/);
@@ -32,7 +32,7 @@ export class SearchScorer {
     return Math.min(score, 3);
   }
 
-  public calculateBodyScore(issue: GitHubIssue, searchTerms: string[], matchDetails: SearchResult["matchDetails"]): number {
+  public calculateBodyScore(issue: GitHubNotifications, searchTerms: string[], matchDetails: SearchResult["matchDetails"]): number {
     let score = 0;
     const body = (issue.body || "").toLowerCase();
     const words = body.split(/\s+/);
@@ -62,7 +62,7 @@ export class SearchScorer {
     return Math.min(score, 2);
   }
 
-  public calculateMetaScore(issue: GitHubIssue, searchTerms: string[], matchDetails: SearchResult["matchDetails"]): number {
+  public calculateMetaScore(issue: GitHubNotifications, searchTerms: string[], matchDetails: SearchResult["matchDetails"]): number {
     let score = 0;
     const numberTerm = searchTerms.find((term) => /^\d+$/.test(term));
     if (numberTerm && issue.number.toString() === numberTerm) {
@@ -91,7 +91,7 @@ export class SearchScorer {
     return score;
   }
 
-  public calculateRepoScore(issue: GitHubIssue, searchTerms: string[], matchDetails: SearchResult["matchDetails"]): number {
+  public calculateRepoScore(issue: GitHubNotifications, searchTerms: string[], matchDetails: SearchResult["matchDetails"]): number {
     let score = 0;
     if (issue.repository_url) {
       const repoName = issue.repository_url.split("/").pop()?.toLowerCase() || "";

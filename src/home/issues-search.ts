@@ -1,5 +1,4 @@
-import { GitHubIssue } from "./github-types";
-import { TaskManager } from "./task-manager";
+import { GitHubNotifications } from "./github-types";
 import { SearchResult, SearchWeights, SearchConfig } from "./types/search-types";
 import { SearchScorer } from "./search/search-scorer";
 
@@ -25,7 +24,7 @@ export class IssueSearch {
     this._searchScorer = new SearchScorer(this._config);
   }
 
-  public async initializeIssues(issues: GitHubIssue[]) {
+  public async initializeIssues(issues: GitHubNotifications) {
     this._searchableIssues.clear();
     issues.forEach((issue) => {
       const searchableContent = this._getSearchableContent(issue);
@@ -66,7 +65,7 @@ export class IssueSearch {
     return results;
   }
 
-  private _calculateIssueRelevance(issue: GitHubIssue, searchTerms: string[], enableFuzzy: boolean): SearchResult {
+  private _calculateIssueRelevance(issue: GitHubNotifications, searchTerms: string[], enableFuzzy: boolean): SearchResult {
     const matchDetails = {
       titleMatches: [] as string[],
       bodyMatches: [] as string[],
@@ -133,7 +132,7 @@ export class IssueSearch {
       .map((term) => term.toLowerCase());
   }
 
-  private _getSearchableContent(issue: GitHubIssue): string {
+  private _getSearchableContent(issue: GitHubNotifications): string {
     // Remove URLs from the content
     const removeUrls = (text: string): string => {
       return text.replace(/(?:https?:\/\/|http?:\/\/|www\.)[^\s]+/g, "");

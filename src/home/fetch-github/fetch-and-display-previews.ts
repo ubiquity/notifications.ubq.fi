@@ -1,12 +1,11 @@
-import { GitHubIssue } from "../github-types";
-import { taskManager } from "../home";
-import { applyAvatarsToIssues, renderGitHubIssues } from "../rendering/render-github-issues";
+import { GitHubNotifications } from "../github-types";
+import { notifications } from "../home";
+import { applyAvatarsToIssues, renderNotifications } from "../rendering/render-github-issues";
 import { renderOrgHeaderLabel } from "../rendering/render-org-header";
 import { closeModal } from "../rendering/render-preview-modal";
 import { filterIssuesBySearch } from "../sorting/filter-issues-by-search";
 import { Sorting } from "../sorting/generate-sorting-buttons";
 import { sortIssuesController } from "../sorting/sort-issues-controller";
-import { checkCacheIntegrityAndSyncTasks } from "./cache-integrity";
 
 export type Options = {
   ordering: "normal" | "reverse";
@@ -35,7 +34,7 @@ viewToggle.addEventListener("click", () => {
 });
 
 function getProposalsOnlyFilter(getProposals: boolean) {
-  return (issue: GitHubIssue) => {
+  return (issue: GitHubNotifications) => {
     if (!issue?.labels) return false;
 
     const hasPriceLabel = issue.labels.some((label) => {
@@ -47,7 +46,7 @@ function getProposalsOnlyFilter(getProposals: boolean) {
   };
 }
 
-function filterIssuesByOrganization(issues: GitHubIssue[]): GitHubIssue[] {
+function filterIssuesByOrganization(issues: GitHubNotifications): GitHubNotifications {
   // get organization name from first thing after / in URL
   const pathSegments = window.location.pathname.split("/").filter(Boolean);
   const urlOrgName = pathSegments.length > 0 ? pathSegments[0] : null;
@@ -73,7 +72,7 @@ function filterIssuesByOrganization(issues: GitHubIssue[]): GitHubIssue[] {
 }
 
 // checks the cache's integrity, sorts issues, checks Directory/Proposals toggle, renders them and applies avatars
-export async function displayGitHubIssues({
+export async function displayNotifications({
   sorting,
   options = { ordering: "normal" },
   skipAnimation = false,
@@ -82,12 +81,10 @@ export async function displayGitHubIssues({
   options?: { ordering: string };
   skipAnimation?: boolean;
 } = {}) {
-  await checkCacheIntegrityAndSyncTasks();
-  const cachedTasks = taskManager.getTasks();
-  const sortedIssues = sortIssuesController(cachedTasks, sorting, options);
-  let sortedAndFiltered = sortedIssues.filter(getProposalsOnlyFilter(isProposalOnlyViewer));
-  sortedAndFiltered = filterIssuesByOrganization(sortedAndFiltered);
-  renderGitHubIssues(sortedAndFiltered, skipAnimation);
+  //const sortedIssues = sortIssuesController(cachedTasks, sorting, options);
+  //let sortedAndFiltered = sortedIssues.filter(getProposalsOnlyFilter(isProposalOnlyViewer));
+  //sortedAndFiltered = filterIssuesByOrganization(sortedAndFiltered);
+  renderNotifications(notifications, skipAnimation);
   applyAvatarsToIssues();
 }
 
@@ -101,6 +98,6 @@ export async function searchDisplayGitHubIssues({
   const searchResult = filterIssuesBySearch(searchText);
   let filteredIssues = searchResult.filter(getProposalsOnlyFilter(isProposalOnlyViewer));
   filteredIssues = filterIssuesByOrganization(filteredIssues);
-  renderGitHubIssues(filteredIssues, skipAnimation);
+  renderNotifications(filteredIssues, skipAnimation);
   applyAvatarsToIssues();
 }

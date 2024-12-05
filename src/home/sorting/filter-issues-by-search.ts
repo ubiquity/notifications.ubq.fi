@@ -1,5 +1,4 @@
-import { GitHubIssue } from "../github-types";
-import { taskManager } from "../home";
+import { GitHubNotifications } from "../github-types";
 
 export function filterIssuesBySearch(filterText: string) {
   const searchResults = taskManager.issueSearcher.search(filterText);
@@ -8,6 +7,6 @@ export function filterIssuesBySearch(filterText: string) {
     .filter(([, result]) => result.score > 0)
     .sort((a, b) => b[1].score - a[1].score)
     .map(([id]) => taskManager.getGitHubIssueById(id))
-    .filter((issue): issue is GitHubIssue => issue !== undefined);
+    .filter((issue): issue is GitHubNotifications => issue !== undefined);
   return sortedIssues;
 }

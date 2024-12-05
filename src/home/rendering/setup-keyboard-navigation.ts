@@ -1,4 +1,3 @@
-import { taskManager } from "../home";
 import { viewIssueDetails } from "./render-github-issues";
 
 const keyDownHandlerCurried = keyDownHandler();

@@ -1,4 +1,4 @@
-import { organizationImageCache } from "../fetch-github/fetch-issues-full";
+import { organizationImageCache } from "../fetch-github/fetch-notifications";
 
 export function renderOrgHeaderLabel(orgName: string): void {
   const brandingDiv = document.getElementById("branding");

@@ -1,4 +1,4 @@
-import { GitHubIssue } from "../github-types";
+import { GitHubNotifications } from "../github-types";
 
 // this file contains functions to save and retrieve issues/images from IndexedDB which is client-side in-browser storage
 export async function saveImageToCache({
@@ -88,19 +88,19 @@ async function openIssuesDB(): Promise<IDBDatabase> {
   });
 }
 // Saves fetched issues into IndexedDB and removes stale issues
-export async function saveIssuesToCache(cachedIssues: GitHubIssue[], fetchedIssues: GitHubIssue[]): Promise<void> {
+export async function saveIssuesToCache(cachedIssues: GitHubNotifications, fetchedNotifications: GitHubNotifications): Promise<void> {
   const db = await openIssuesDB();
   const transaction = db.transaction("issues", "readwrite");
   const store = transaction.objectStore("issues");
 
   // Identify and remove stale issues (in cache but not in fetched list)
-  const staleIssues = cachedIssues.filter((cachedIssue) => !fetchedIssues.some((issue) => issue.id === cachedIssue.id));
+  const staleIssues = cachedIssues.filter((cachedIssue) => !fetchedNotifications.some((issue) => issue.id === cachedIssue.id));
   for (const issue of staleIssues) {
     store.delete(issue.id);
   }
 
   // Save or update fetched issues
-  for (const issue of fetchedIssues) {
+  for (const issue of fetchedNotifications) {
     store.put(issue);
   }
 
@@ -111,7 +111,7 @@ export async function saveIssuesToCache(cachedIssues: GitHubIssue[], fetchedIssu
 }
 
 // Retrieves issues from IndexedDB
-export async function getIssuesFromCache(): Promise<GitHubIssue[]> {
+export async function getIssuesFromCache(): Promise<GitHubNotifications> {
   const db = await openIssuesDB();
   const transaction = db.transaction("issues", "readonly");
   const store = transaction.objectStore("issues");

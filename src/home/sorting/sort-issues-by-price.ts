@@ -1,6 +1,6 @@
-import { GitHubIssue } from "../github-types";
+import { GitHubNotifications } from "../github-types";
 
-export function sortIssuesByPrice(issues: GitHubIssue[]) {
+export function sortIssuesByPrice(issues: GitHubNotifications) {
   return issues.sort((a, b) => {
     const aPrice = a.labels.map(getPriceFromLabel).find((price) => price !== null) ?? -1;
     const bPrice = b.labels.map(getPriceFromLabel).find((price) => price !== null) ?? -1;
