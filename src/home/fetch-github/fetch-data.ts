@@ -97,7 +97,7 @@ async function fetchIssueFromPullRequest(pullRequest: GitHubPullRequest): Promis
   return null;
 }
 
-// Main function to fetch pull request notifications with related pull request and issue data
+// Function to fetch pull request notifications with related pull request and issue data
 export async function fetchPullRequestNotifications(): Promise<GitHubAggregated[] | null> {
   const notifications = await fetchNotifications();
   if (!notifications) return null;
@@ -122,7 +122,7 @@ export async function fetchPullRequestNotifications(): Promise<GitHubAggregated[
   return aggregatedData;
 }
 
-// Main function to fetch issue notifications with related issue data
+// Function to fetch issue notifications with related issue data
 export async function fetchIssueNotifications(): Promise<GitHubAggregated[] | null> {
   const notifications = await fetchNotifications();
   if (!notifications) return null;
@@ -142,4 +142,18 @@ export async function fetchIssueNotifications(): Promise<GitHubAggregated[] | nu
 
   console.log("issueNotifications", aggregatedData);
   return aggregatedData;
+}
+
+// Fetch all notifications and return them as an array of aggregated data
+export async function fetchAllNotifications(): Promise<GitHubAggregated[] | null> {
+  const pullRequestNotifications = await fetchPullRequestNotifications();
+  const issueNotifications = await fetchIssueNotifications();
+
+  if (!pullRequestNotifications && !issueNotifications) return null;
+  if (!pullRequestNotifications) return issueNotifications;
+  if (!issueNotifications) return pullRequestNotifications;
+
+  const allNotifications = [...pullRequestNotifications, ...issueNotifications];
+  console.log("allNotifications", allNotifications);
+  return allNotifications;
 }
