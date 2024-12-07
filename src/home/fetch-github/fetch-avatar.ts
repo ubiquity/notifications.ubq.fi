@@ -3,8 +3,7 @@ import { getGitHubAccessToken } from "../getters/get-github-access-token";
 import { getImageFromCache, saveImageToCache } from "../getters/get-indexed-db";
 import { renderErrorInModal } from "../rendering/display-popup-modal";
 import { organizationImageCache } from "./fetch-data";
-import { GitHubNotifications } from "../github-types";
-import { notifications } from "../home";
+import { GitHubAggregated, GitHubNotification, GitHubNotifications } from "../github-types";
 
 // Map to track ongoing avatar fetches
 const pendingFetches: Map<string, Promise<Blob | void>> = new Map();
@@ -100,10 +99,10 @@ export async function fetchAvatar(orgName: string): Promise<Blob | void> {
 }
 
 // fetches avatars for all tasks (issues) cached. it will fetch only once per organization, remaining are returned from cache
-export async function fetchAvatars() {
+export async function fetchAvatars(notifications: GitHubAggregated[]) {
   // fetches avatar for each organization for each task, but fetchAvatar() will only fetch once per organization, remaining are returned from cache
-  const avatarPromises = notifications.map(async (task: GitHubNotifications) => {
-    const [orgName] = task.repository_url.split("/").slice(-2);
+  const avatarPromises = notifications.map(async (task: GitHubAggregated) => {
+    const [orgName] = task.notification.repository.url.split("/").slice(-2);
     if (orgName) {
       return fetchAvatar(orgName);
     }

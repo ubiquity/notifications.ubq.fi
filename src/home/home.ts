@@ -1,7 +1,9 @@
 import { grid } from "../the-grid";
 import { authentication } from "./authentication";
 import { displayNotifications } from "./fetch-github/fetch-and-display-previews";
+import { fetchAvatars } from "./fetch-github/fetch-avatar";
 import { fetchAllNotifications, fetchIssueNotifications, fetchPullRequestNotifications } from "./fetch-github/fetch-data";
+import { GitHubNotifications } from "./github-types";
 import { readyToolbar } from "./ready-toolbar";
 import { renderServiceMessage } from "./render-service-message";
 import { renderErrorInModal } from "./rendering/display-popup-modal";
@@ -32,6 +34,9 @@ void (async function home() {
   void authentication();
   void readyToolbar();
   const notifications = await fetchAllNotifications();
+  if(notifications){
+    void fetchAvatars(notifications);
+  }
   void displayNotifications(notifications);
 
   // Register service worker for PWA

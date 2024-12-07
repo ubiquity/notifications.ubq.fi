@@ -34,7 +34,7 @@ export function renderNotifications(notifications: GitHubAggregated[], skipAnima
   }
   notificationsContainer.classList.add("ready");
   // Call this function after the issues have been rendered
-  setupKeyboardNavigation(notificationsContainer);
+  //setupKeyboardNavigation(notificationsContainer);
 
   // Scroll to the top of the page
   window.scrollTo({ top: 0 });
@@ -62,7 +62,7 @@ function everyNewNotification({ notification, notificationsContainer }: { notifi
 
   const labels = parseAndGenerateLabels(notification.issue);
   const [organizationName, repositoryName] = notification.notification.repository.url.split("/").slice(-2);
-  setUpIssueElement(issueElement, notification, organizationName, repositoryName, labels, notification.html_url);
+  setUpIssueElement(issueElement, notification, organizationName, repositoryName, labels, notification.notification.subject.url);
   issueWrapper.appendChild(issueElement);
 
   notificationsContainer.appendChild(issueWrapper);
