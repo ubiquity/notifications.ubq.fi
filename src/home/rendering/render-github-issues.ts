@@ -1,13 +1,13 @@
 import { marked } from "marked";
 import { organizationImageCache } from "../fetch-github/fetch-data";
-import { GitHubNotification, GitHubNotifications } from "../github-types";
+import { GitHubAggregated, GitHubNotification, GitHubNotifications } from "../github-types";
 import { renderErrorInModal } from "./display-popup-modal";
 import { closeModal, modal, modalBodyInner, bottomBar, titleAnchor, titleHeader, bottomBarClearLabels } from "./render-preview-modal";
 import { setupKeyboardNavigation } from "./setup-keyboard-navigation";
 import { waitForElement } from "./utils";
 import { notificationsContainer } from "../home";
 
-export function renderNotifications(tasks: GitHubNotifications, skipAnimation: boolean) {
+export function renderNotifications(tasks: GitHubAggregated[] | null, skipAnimation: boolean) {
   if (notificationsContainer.classList.contains("ready")) {
     notificationsContainer.classList.remove("ready");
     notificationsContainer.innerHTML = "";
@@ -38,6 +38,20 @@ export function renderNotifications(tasks: GitHubNotifications, skipAnimation: b
 
   // Scroll to the top of the page
   window.scrollTo({ top: 0 });
+}
+export function renderEmpty(){
+  const issueWrapper = document.createElement("div");
+  issueWrapper.style.marginTop = "20px";
+  const issueElement = document.createElement("div");
+  issueElement.innerHTML = `
+    <div class="info"><div class="title"><h3>No notifications found</h3></div></div>
+  `;
+  issueElement.classList.add("issue-element-inner");
+  issueWrapper.appendChild(issueElement);
+  notificationsContainer.appendChild(issueWrapper);
+
+  issueWrapper.classList.add("active");
+  notificationsContainer.classList.add("ready");
 }
 
 function everyNewNotification({ notification, notificationsContainer }: { notification: GitHubNotification; notificationsContainer: HTMLDivElement }) {

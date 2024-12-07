@@ -28,12 +28,11 @@ if (!notificationsContainer) {
   throw new Error("Could not find issues container");
 }
 
-export const notifications = void fetchAllNotifications();
-
 void (async function home() {
   void authentication();
   void readyToolbar();
-  //  void displayNotifications();
+  const notifications = await fetchAllNotifications();
+  void displayNotifications(notifications);
 
   // Register service worker for PWA
   // if ("serviceWorker" in navigator) {

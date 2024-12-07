@@ -1,6 +1,5 @@
-import { GitHubNotifications } from "../github-types";
-import { pullRequestNotifications } from "../home";
-import { applyAvatarsToIssues, renderNotifications } from "../rendering/render-github-issues";
+import { GitHubAggregated, GitHubNotifications } from "../github-types";
+import { applyAvatarsToIssues, renderEmpty, renderNotifications } from "../rendering/render-github-issues";
 import { renderOrgHeaderLabel } from "../rendering/render-org-header";
 import { closeModal } from "../rendering/render-preview-modal";
 import { filterIssuesBySearch } from "../sorting/filter-issues-by-search";
@@ -72,7 +71,8 @@ function filterIssuesByOrganization(issues: GitHubNotifications): GitHubNotifica
 }
 
 // checks the cache's integrity, sorts issues, checks Directory/Proposals toggle, renders them and applies avatars
-export async function displayNotifications({
+export async function displayNotifications(
+  notifications: GitHubAggregated[] | null, {
   sorting,
   options = { ordering: "normal" },
   skipAnimation = false,
@@ -84,8 +84,12 @@ export async function displayNotifications({
   //const sortedIssues = sortIssuesController(cachedTasks, sorting, options);
   //let sortedAndFiltered = sortedIssues.filter(getProposalsOnlyFilter(isProposalOnlyViewer));
   //sortedAndFiltered = filterIssuesByOrganization(sortedAndFiltered);
-  renderNotifications(pullRequestNotifications, skipAnimation);
-  applyAvatarsToIssues();
+  if(notifications === null || notifications.length === 0){
+    renderEmpty();
+    return;
+  }
+  renderNotifications(notifications, skipAnimation);
+  //applyAvatarsToIssues();
 }
 
 export async function searchDisplayGitHubIssues({ searchText, skipAnimation = false }: { searchText: string; skipAnimation?: boolean }) {

@@ -4,6 +4,8 @@ import { getGitHubAccessToken } from "../getters/get-github-access-token";
 import { handleRateLimit } from "./handle-rate-limit";
 import { RequestError } from "@octokit/request-error";
 
+export const organizationImageCache = new Map<string, Blob | null>(); // this should be declared in image related script
+
 // Generalized function to fetch notifications from GitHub
 async function fetchNotifications(): Promise<GitHubNotifications | null> {
   const providerToken = await getGitHubAccessToken();
