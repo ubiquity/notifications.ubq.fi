@@ -13,6 +13,7 @@ async function fetchNotifications(): Promise<GitHubNotifications | null> {
 
   try {
     const notifications = (await octokit.request("GET /notifications")).data as GitHubNotifications;
+    console.log("unfiltered", notifications);
     return notifications;
   } catch (error) {
     if (error instanceof RequestError && error.status === 403) {

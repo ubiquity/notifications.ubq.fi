@@ -1,27 +1,27 @@
 import { marked } from "marked";
 import { organizationImageCache } from "../fetch-github/fetch-data";
-import { GitHubAggregated, GitHubNotification, GitHubNotifications } from "../github-types";
+import { GitHubAggregated, GitHubIssue, GitHubNotification, GitHubNotifications } from "../github-types";
 import { renderErrorInModal } from "./display-popup-modal";
 import { closeModal, modal, modalBodyInner, bottomBar, titleAnchor, titleHeader, bottomBarClearLabels } from "./render-preview-modal";
 import { setupKeyboardNavigation } from "./setup-keyboard-navigation";
 import { waitForElement } from "./utils";
 import { notificationsContainer } from "../home";
 
-export function renderNotifications(tasks: GitHubAggregated[] | null, skipAnimation: boolean) {
+export function renderNotifications(notifications: GitHubAggregated[], skipAnimation: boolean) {
   if (notificationsContainer.classList.contains("ready")) {
     notificationsContainer.classList.remove("ready");
     notificationsContainer.innerHTML = "";
   }
-  const existingIssueIds = new Set(
+  const existingNotificationIds = new Set(
     Array.from(notificationsContainer.querySelectorAll(".issue-element-inner")).map((element) => element.getAttribute("data-issue-id"))
   );
 
   let delay = 0;
   const baseDelay = 1000 / 15; // Base delay in milliseconds
 
-  for (const task of tasks) {
-    if (!existingIssueIds.has(task.id.toString())) {
-      const issueWrapper = everyNewNotification({ notification: task, notificationsContainer });
+  for (const notification of notifications) {
+    if (!existingNotificationIds.has(notification.notification.id.toString())) {
+      const issueWrapper = everyNewNotification({ notification: notification, notificationsContainer });
       if (issueWrapper) {
         if (skipAnimation) {
           issueWrapper.classList.add("active");
@@ -54,14 +54,14 @@ export function renderEmpty(){
   notificationsContainer.classList.add("ready");
 }
 
-function everyNewNotification({ notification, notificationsContainer }: { notification: GitHubNotification; notificationsContainer: HTMLDivElement }) {
+function everyNewNotification({ notification, notificationsContainer }: { notification: GitHubAggregated; notificationsContainer: HTMLDivElement }) {
   const issueWrapper = document.createElement("div");
   const issueElement = document.createElement("div");
-  issueElement.setAttribute("data-issue-id", notification.id.toString());
+  issueElement.setAttribute("data-issue-id", notification.notification.id.toString());
   issueElement.classList.add("issue-element-inner");
 
-  const labels = parseAndGenerateLabels(notification);
-  const [organizationName, repositoryName] = notification.repository.url.split("/").slice(-2);
+  const labels = parseAndGenerateLabels(notification.issue);
+  const [organizationName, repositoryName] = notification.notification.repository.url.split("/").slice(-2);
   setUpIssueElement(issueElement, notification, organizationName, repositoryName, labels, notification.html_url);
   issueWrapper.appendChild(issueElement);
 
@@ -71,7 +71,7 @@ function everyNewNotification({ notification, notificationsContainer }: { notifi
 
 function setUpIssueElement(
   issueElement: HTMLDivElement,
-  task: GitHubNotifications,
+  notification: GitHubAggregated,
   organizationName: string,
   repositoryName: string,
   labels: string[],
@@ -81,7 +81,7 @@ function setUpIssueElement(
 
   issueElement.innerHTML = `
       <div class="info"><div class="title"><h3>${
-        task.title
+        notification.notification.subject.title
       }</h3></div><div class="partner"><p class="organization-name">${organizationName}</p><p class="repository-name">${repositoryName}</p></div></div><div class="labels">${labels.join(
         ""
       )}${image}</div>`;
@@ -100,11 +100,11 @@ function setUpIssueElement(
 
       issueWrapper.classList.add("selected");
 
-      const full = task;
+      const full = notification;
       if (!full) {
         window.open(url, "_blank");
       } else {
-        previewIssue(task);
+        //previewIssue(notification);
       }
     } catch (error) {
       return renderErrorInModal(error as Error);
@@ -112,12 +112,12 @@ function setUpIssueElement(
   });
 }
 
-function parseAndGenerateLabels(task: GitHubNotifications) {
+function parseAndGenerateLabels(notification: GitHubIssue) {
   type LabelKey = "Price: " | "Time: " | "Priority: ";
 
   const labelOrder: Record<LabelKey, number> = { "Price: ": 1, "Time: ": 2, "Priority: ": 3 };
 
-  const { labels, otherLabels } = task.labels.reduce(
+  const { labels, otherLabels } = notification.labels.reduce(
     (acc, label) => {
       // check if label is a single string
       if (typeof label === "string") {
@@ -160,99 +160,99 @@ function parseAndGenerateLabels(task: GitHubNotifications) {
   return labels.map((label) => label.label);
 }
 
-// Function to update and show the preview
-function previewIssue(notification: GitHubNotifications) {
-  void viewIssueDetails(notification);
-}
+// // Function to update and show the preview
+// function previewIssue(notification: GitHubNotifications) {
+//   void viewIssueDetails(notification);
+// }
 
-// Loads the issue preview modal with the issue details
-export async function viewIssueDetails(full: GitHubNotifications) {
-  // Update the title and body for the new issue
-  titleHeader.textContent = full.title;
-  titleAnchor.href = full.html_url;
-  if (!full.body) return;
+// // Loads the issue preview modal with the issue details
+// export async function viewIssueDetails(full: GitHubNotifications) {
+//   // Update the title and body for the new issue
+//   titleHeader.textContent = full.title;
+//   titleAnchor.href = full.html_url;
+//   if (!full.body) return;
 
-  // Remove any existing cloned labels from the bottom bar
-  bottomBarClearLabels();
+//   // Remove any existing cloned labels from the bottom bar
+//   bottomBarClearLabels();
 
-  // Wait for the issue element to exist, useful when loading issue from URL
-  const issueElement = await waitForElement(`div[data-issue-id="${full.id}"]`);
+//   // Wait for the issue element to exist, useful when loading issue from URL
+//   const issueElement = await waitForElement(`div[data-issue-id="${full.id}"]`);
 
-  const labelsDiv = issueElement.querySelector(".labels");
-  if (labelsDiv) {
-    // Clone the labels div and remove the img child if it exists
-    const clonedLabels = labelsDiv.cloneNode(true) as HTMLElement;
-    const imgElement = clonedLabels.querySelector("img");
-    if (imgElement) clonedLabels.removeChild(imgElement);
+//   const labelsDiv = issueElement.querySelector(".labels");
+//   if (labelsDiv) {
+//     // Clone the labels div and remove the img child if it exists
+//     const clonedLabels = labelsDiv.cloneNode(true) as HTMLElement;
+//     const imgElement = clonedLabels.querySelector("img");
+//     if (imgElement) clonedLabels.removeChild(imgElement);
 
-    // Add an extra class and set padding
-    clonedLabels.classList.add("cloned-labels");
+//     // Add an extra class and set padding
+//     clonedLabels.classList.add("cloned-labels");
 
-    // Prepend the cloned labels to the modal body
-    bottomBar.prepend(clonedLabels);
-  }
+//     // Prepend the cloned labels to the modal body
+//     bottomBar.prepend(clonedLabels);
+//   }
 
-  // Set the issue body content using `marked`
-  modalBodyInner.innerHTML = marked(full.body) as string;
+//   // Set the issue body content using `marked`
+//   modalBodyInner.innerHTML = marked(full.body) as string;
 
-  // Show the preview
-  modal.classList.add("active");
-  modal.classList.remove("error");
-  document.body.classList.add("preview-active");
+//   // Show the preview
+//   modal.classList.add("active");
+//   modal.classList.remove("error");
+//   document.body.classList.add("preview-active");
 
-  updateUrlWithIssueId(full.id);
-}
+//   updateUrlWithIssueId(full.id);
+// }
 
-// Listen for changes in view toggle and update the URL accordingly
-export const proposalViewToggle = document.getElementById("view-toggle") as HTMLInputElement;
-proposalViewToggle.addEventListener("change", () => {
-  const newURL = new URL(window.location.href);
-  if (proposalViewToggle.checked) {
-    newURL.searchParams.set("proposal", "true");
-  } else {
-    newURL.searchParams.delete("proposal");
-  }
-  window.history.replaceState({}, "", newURL.toString());
-});
+// // Listen for changes in view toggle and update the URL accordingly
+// export const proposalViewToggle = document.getElementById("view-toggle") as HTMLInputElement;
+// proposalViewToggle.addEventListener("change", () => {
+//   const newURL = new URL(window.location.href);
+//   if (proposalViewToggle.checked) {
+//     newURL.searchParams.set("proposal", "true");
+//   } else {
+//     newURL.searchParams.delete("proposal");
+//   }
+//   window.history.replaceState({}, "", newURL.toString());
+// });
 
-// Adds issue ID to url in format (i.e http://localhost:8080/?issue=2559612103)
-function updateUrlWithIssueId(issueID: number) {
-  const newURL = new URL(window.location.href);
-  newURL.searchParams.set("issue", String(issueID));
+// // Adds issue ID to url in format (i.e http://localhost:8080/?issue=2559612103)
+// function updateUrlWithIssueId(issueID: number) {
+//   const newURL = new URL(window.location.href);
+//   newURL.searchParams.set("issue", String(issueID));
 
-  // Set issue in URL
-  window.history.replaceState({ issueID }, "", newURL.toString());
-}
+//   // Set issue in URL
+//   window.history.replaceState({ issueID }, "", newURL.toString());
+// }
 
-// Opens the preview modal if a URL contains an issueID
-export function loadIssueFromUrl() {
-  const urlParams = new URLSearchParams(window.location.search);
-  const issueID = urlParams.get("issue");
+// // Opens the preview modal if a URL contains an issueID
+// export function loadIssueFromUrl() {
+//   const urlParams = new URLSearchParams(window.location.search);
+//   const issueID = urlParams.get("issue");
 
-  // If no issue ID in the URL, don't load issue
-  if (!issueID) {
-    closeModal();
-    return;
-  }
+//   // If no issue ID in the URL, don't load issue
+//   if (!issueID) {
+//     closeModal();
+//     return;
+//   }
 
-  // If ID doesn't exist, don't load issue
-  const issue: GitHubNotifications = taskManager.getnotificationById(Number(issueID)) as GitHubNotifications;
+//   // If ID doesn't exist, don't load issue
+//   const issue: GitHubNotifications = notificationManager.getnotificationById(Number(issueID)) as GitHubNotifications;
 
-  if (!issue) {
-    const newURL = new URL(window.location.href);
-    newURL.searchParams.delete("issue");
-    window.history.pushState({}, "", newURL.toString());
-    return;
-  }
+//   if (!issue) {
+//     const newURL = new URL(window.location.href);
+//     newURL.searchParams.delete("issue");
+//     window.history.pushState({}, "", newURL.toString());
+//     return;
+//   }
 
-  void viewIssueDetails(issue);
-}
+//   void viewIssueDetails(issue);
+// }
 
 export function applyAvatarsToIssues() {
-  const notificationsContainer = taskManager.getnotificationsContainer();
-  const issueElements = Array.from(notificationsContainer.querySelectorAll(".issue-element-inner"));
+  const notificationsContainer = document.getElementById("issues-container") as HTMLDivElement;
+  const notificationElements = Array.from(notificationsContainer.querySelectorAll(".issue-element-inner"));
 
-  issueElements.forEach((issueElement) => {
+  notificationElements.forEach((issueElement) => {
     const orgName = issueElement.querySelector(".organization-name")?.textContent;
     if (orgName) {
       const avatarUrl = organizationImageCache.get(orgName);
