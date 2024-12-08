@@ -60,7 +60,7 @@ function everyNewNotification({ notification, notificationsContainer }: { notifi
   issueElement.setAttribute("data-issue-id", notification.notification.id.toString());
   issueElement.classList.add("issue-element-inner");
 
-  const labels = parseAndGenerateLabels(notification.issue);
+  const labels = parseAndGenerateLabels(notification);
   const [organizationName, repositoryName] = notification.notification.repository.url.split("/").slice(-2);
   setUpIssueElement(issueElement, notification, organizationName, repositoryName, labels, notification.notification.subject.url);
   issueWrapper.appendChild(issueElement);
@@ -112,44 +112,43 @@ function setUpIssueElement(
   });
 }
 
-function parseAndGenerateLabels(notification: GitHubIssue) {
-  type LabelKey = "Priority: ";
+function parseAndGenerateLabels(notification: GitHubAggregated) {
+  const labels: string[] = [];
 
-  const labelOrder: Record<LabelKey, number> = { "Priority: ": 1 };
-
-  const { labels } = notification.labels.reduce(
-    (acc, label) => {
+  // Add priority label
+  if (notification.issue.labels) {
+    notification.issue.labels.forEach((label) => {
       // check if label is a single string
       if (typeof label === "string") {
-        return {
-          labels: [],
-        };
+        return;
       }
 
       // check if label.name exists
       if (!label.name) {
-        return {
-          labels: [],
-        };
+        return;
       }
 
       const match = label.name.match(/^(Priority): /);
       if (match) {
         const name = label.name.replace(match[0], "");
-        const labelStr = `<label class="${match[1].toLowerCase().trim()}">${name}</label>`;
-        acc.labels.push({ order: labelOrder[match[0] as LabelKey], label: labelStr });
+        const labelStr = `<label class="priority">${name}</label>`;
+        labels.push(labelStr);
       }
-      return acc;
-    },
-    { labels: [] as { order: number; label: string }[] }
-  );
+    });
+  }
 
-  // Sort labels
-  labels.sort((a: { order: number }, b: { order: number }) => a.order - b.order);
+  // Add reason label
+  if (notification.notification.reason) {
+    labels.push(`<label class="reason">${notification.notification.reason}</label>`);
+  }
 
-  return labels.map((label) => label.label);
-}
+  // Add timestamp label
+  if (notification.notification.updated_at) {
+    labels.push(`<label class="timestamp">${new Date(notification.notification.updated_at).toLocaleString()}</label>`);
+  }
 
+  return labels;
+} 
 // // Function to update and show the preview
 // function previewIssue(notification: GitHubNotifications) {
 //   void viewIssueDetails(notification);
