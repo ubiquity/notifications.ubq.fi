@@ -36,7 +36,7 @@ function preFilterNotifications(notifications: GitHubNotification[]): GitHubNoti
       return false;
     }
 
-    // Ignore notifications from repos that are not relevant
+    // Ignore notifications from orgs that are not relevant
     const repoName = notification.repository.full_name.split("/")[0];
     return ["ubiquity", "ubiquity-os", "ubiquity-os-marketplace"].includes(repoName);
   });
@@ -111,12 +111,16 @@ export async function fetchPullRequestNotifications(): Promise<GitHubAggregated[
   for (const notification of filteredNotifications) {
     const pullRequestUrl = notification.subject.url;
     const pullRequest = await fetchPullRequestDetails(pullRequestUrl);
-    if (!pullRequest || pullRequest.draft || pullRequest.state === "closed") {
+    if (!pullRequest /*|| pullRequest.draft || pullRequest.state === "closed"*/) {
+      console.log("Pull request is draft or closed", pullRequest);
       continue; // Skip draft or closed pull requests
     }
 
     const issue = await fetchIssueFromPullRequest(pullRequest);
-    if (!issue) continue; // Skip if no associated issue
+    if (!issue){
+      console.log("No associated issue", pullRequest);
+      continue; // Skip if no associated issue
+    }
 
     aggregatedData.push({ notification, pullRequest, issue });
   }
@@ -136,7 +140,8 @@ export async function fetchIssueNotifications(): Promise<GitHubAggregated[] | nu
   for (const notification of filteredNotifications) {
     const issueUrl = notification.subject.url;
     const issue = await fetchIssueDetails(issueUrl);
-    if (!issue || issue.state === "closed") {
+    if (!issue /*|| issue.state === "closed"*/) {
+      console.log("Issue is closed", issue);
       continue; // Skip closed issues
     }
 
