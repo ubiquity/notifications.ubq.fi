@@ -62,7 +62,13 @@ function everyNewNotification({ notification, notificationsContainer }: { notifi
 
   const labels = parseAndGenerateLabels(notification);
   const [organizationName, repositoryName] = notification.notification.repository.url.split("/").slice(-2);
-  setUpIssueElement(issueElement, notification, organizationName, repositoryName, labels, notification.notification.subject.url);
+  let url;
+  if(notification.notification.subject.type === "Issue"){
+    url = notification.issue.html_url;
+  } else if(notification.notification.subject.type === "PullRequest"){
+    url = notification.pullRequest?.html_url;
+  }
+  setUpIssueElement(issueElement, notification, organizationName, repositoryName, labels, url as string);
   issueWrapper.appendChild(issueElement);
 
   notificationsContainer.appendChild(issueWrapper);
@@ -100,12 +106,8 @@ function setUpIssueElement(
 
       issueWrapper.classList.add("selected");
 
-      const full = notification;
-      if (!full) {
-        window.open(url, "_blank");
-      } else {
-        //previewIssue(notification);
-      }
+      window.open(url, "_blank");
+
     } catch (error) {
       return renderErrorInModal(error as Error);
     }
