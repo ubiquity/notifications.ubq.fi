@@ -117,7 +117,7 @@ export async function fetchPullRequestNotifications(): Promise<GitHubAggregated[
     }
 
     const issue = await fetchIssueFromPullRequest(pullRequest);
-    if (!issue){
+    if (!issue) {
       console.log("No associated issue", pullRequest);
       continue; // Skip if no associated issue
     }
