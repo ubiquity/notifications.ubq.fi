@@ -155,7 +155,7 @@
     display: block;
   }
   #issues-container > div.selected,
-  #issues-container > div.selected .info,
+  #issues-container > div.selected .text-info,
   #issues-container > div.selected h3 {
     opacity: 1;
   }
@@ -293,7 +293,7 @@
     text-overflow: ellipsis;
     margin-top: 2px;
   }
-  .info > .partner > * {
+  .text-info > .partner > * {
     display: inline-block;
   }
   body {
@@ -303,6 +303,15 @@
     justify-content: center;
   }
   .info {
+    display: flex;
+    gap: 12px;
+  }
+  .notification-icon {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .text-info {
     opacity: 0.66;
     transition: 125ms opacity ease-in-out;
     align-items: center;
