@@ -139,7 +139,8 @@ function parseAndGenerateLabels(notification: GitHubAggregated) {
 
   // Add reason label
   if (notification.notification.reason) {
-    labels.push(`<label class="reason">${notification.notification.reason}</label>`);
+    const reason = notification.notification.reason.replace(/_/g, " ");
+    labels.push(`<label class="reason">${reason}</label>`);
   }
 
   // Add timestamp label
