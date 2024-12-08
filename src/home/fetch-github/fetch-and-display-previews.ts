@@ -89,7 +89,7 @@ export async function displayNotifications(
     return;
   }
   renderNotifications(notifications, skipAnimation);
-  //applyAvatarsToIssues();
+  applyAvatarsToIssues();
 }
 
 export async function searchDisplayGitHubIssues({ searchText, skipAnimation = false }: { searchText: string; skipAnimation?: boolean }) {

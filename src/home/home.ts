@@ -35,7 +35,7 @@ void (async function home() {
   void readyToolbar();
   const notifications = await fetchAllNotifications();
   if(notifications){
-    void fetchAvatars(notifications);
+    await fetchAvatars(notifications);
   }
   void displayNotifications(notifications);
 
