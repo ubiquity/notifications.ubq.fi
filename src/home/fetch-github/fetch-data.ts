@@ -80,24 +80,43 @@ async function fetchIssueDetails(issueUrl: string): Promise<GitHubIssue | null> 
   return null;
 }
 
-// Function to fetch the issue associated with a pull request
 async function fetchIssueFromPullRequest(pullRequest: GitHubPullRequest): Promise<GitHubIssue | null> {
   const providerToken = await getGitHubAccessToken();
   const octokit = new Octokit({ auth: providerToken });
 
-  // Extract issue number from PR body
-  const issueNumberMatch = pullRequest.body?.match(/Resolves .*\/issues\/(\d+)/) || pullRequest.body?.match(/Resolves #(\d+)/);
-  if (!issueNumberMatch) return null;
+  if (!pullRequest.body) return null;
 
-  const issueNumber = issueNumberMatch[1];
-  const issueUrl = pullRequest.issue_url.replace(/issues\/\d+$/, `issues/${issueNumber}`);
+  // Match the issue reference in the PR body
+  const issueUrlMatch = pullRequest.body.match(/Resolves (https:\/\/github\.com\/(.+?)\/(.+?)\/issues\/(\d+))/);
+  const issueNumberMatch = pullRequest.body.match(/Resolves #(\d+)/);
+
+  let apiUrl: string;
+
+  if (issueUrlMatch) {
+    // Full URL to the issue is provided
+    const [,, owner, repo, issueNumber] = issueUrlMatch;
+    apiUrl = `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}`;
+  } else if (issueNumberMatch) {
+    // Only issue number is provided, construct API URL using current repo info
+    const issueNumber = issueNumberMatch[1];
+    const pullRequestUrlMatch = pullRequest.url.match(/repos\/(.+?)\/(.+?)\/pulls\/\d+/);
+    if (!pullRequestUrlMatch) return null;
+
+    const [, owner, repo] = pullRequestUrlMatch;
+    apiUrl = `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}`;
+  } else {
+    // No valid issue reference found
+    return null;
+  }
+
   try {
-    const issue = (await octokit.request(`GET ${issueUrl}`)).data as GitHubIssue;
+    // Fetch the issue details
+    const issue = (await octokit.request(`GET ${apiUrl}`)).data as GitHubIssue;
     return issue;
   } catch (error) {
     console.warn("Error fetching issue:", error);
+    return null;
   }
-  return null;
 }
 
 // Function to fetch pull request notifications with related pull request and issue data
