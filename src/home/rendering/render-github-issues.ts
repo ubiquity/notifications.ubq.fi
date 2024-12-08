@@ -4,7 +4,7 @@ import { GitHubAggregated, GitHubIssue, GitHubNotification, GitHubNotifications 
 import { renderErrorInModal } from "./display-popup-modal";
 import { closeModal, modal, modalBodyInner, bottomBar, titleAnchor, titleHeader, bottomBarClearLabels } from "./render-preview-modal";
 import { setupKeyboardNavigation } from "./setup-keyboard-navigation";
-import { waitForElement } from "./utils";
+import { getTimeAgo, waitForElement } from "./utils";
 import { notificationsContainer } from "../home";
 
 export function renderNotifications(notifications: GitHubAggregated[], skipAnimation: boolean) {
@@ -145,7 +145,8 @@ function parseAndGenerateLabels(notification: GitHubAggregated) {
 
   // Add timestamp label
   if (notification.notification.updated_at) {
-    labels.push(`<label class="timestamp">${new Date(notification.notification.updated_at).toLocaleString()}</label>`);
+    const timeAgo = getTimeAgo(new Date(notification.notification.updated_at));
+    labels.push(`<label class="timestamp">${timeAgo}</label>`);
   }
 
   return labels;
