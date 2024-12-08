@@ -113,17 +113,16 @@ function setUpIssueElement(
 }
 
 function parseAndGenerateLabels(notification: GitHubIssue) {
-  type LabelKey = "Price: " | "Time: " | "Priority: ";
+  type LabelKey = "Priority: ";
 
-  const labelOrder: Record<LabelKey, number> = { "Price: ": 1, "Time: ": 2, "Priority: ": 3 };
+  const labelOrder: Record<LabelKey, number> = { "Priority: ": 1 };
 
-  const { labels, otherLabels } = notification.labels.reduce(
+  const { labels } = notification.labels.reduce(
     (acc, label) => {
       // check if label is a single string
       if (typeof label === "string") {
         return {
           labels: [],
-          otherLabels: [],
         };
       }
 
@@ -131,31 +130,22 @@ function parseAndGenerateLabels(notification: GitHubIssue) {
       if (!label.name) {
         return {
           labels: [],
-          otherLabels: [],
         };
       }
 
-      const match = label.name.match(/^(Price|Time|Priority): /);
+      const match = label.name.match(/^(Priority): /);
       if (match) {
         const name = label.name.replace(match[0], "");
         const labelStr = `<label class="${match[1].toLowerCase().trim()}">${name}</label>`;
         acc.labels.push({ order: labelOrder[match[0] as LabelKey], label: labelStr });
-      } else if (!label.name.startsWith("Partner: ") && !label.name.startsWith("id: ") && !label.name.startsWith("Unavailable")) {
-        acc.otherLabels.push(label.name);
       }
       return acc;
     },
-    { labels: [] as { order: number; label: string }[], otherLabels: [] as string[] }
+    { labels: [] as { order: number; label: string }[] }
   );
 
   // Sort labels
   labels.sort((a: { order: number }, b: { order: number }) => a.order - b.order);
-
-  // Log the other labels
-  if (otherLabels.length) {
-    const otherLabelName = otherLabels.shift() as string;
-    labels.unshift({ order: 0, label: `<label class="label full">${otherLabelName}</label>` });
-  }
 
   return labels.map((label) => label.label);
 }

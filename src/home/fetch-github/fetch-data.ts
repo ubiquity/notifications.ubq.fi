@@ -94,7 +94,7 @@ async function fetchIssueFromPullRequest(pullRequest: GitHubPullRequest): Promis
 
   if (issueUrlMatch) {
     // Full URL to the issue is provided
-    const [,, owner, repo, issueNumber] = issueUrlMatch;
+    const [, , owner, repo, issueNumber] = issueUrlMatch;
     apiUrl = `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}`;
   } else if (issueNumberMatch) {
     // Only issue number is provided, construct API URL using current repo info
