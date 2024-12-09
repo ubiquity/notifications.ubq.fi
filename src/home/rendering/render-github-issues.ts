@@ -69,7 +69,6 @@ async function everyNewNotification({ notification, notificationsContainer }: { 
       const response = await fetch(notification.notification.subject.latest_comment_url);
       const data = await response.json();
       url = data.html_url;
-      console.log(url);
     } catch (error) {
       console.error("Failed to fetch latest comment URL:", error);
     }
