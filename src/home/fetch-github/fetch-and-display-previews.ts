@@ -88,7 +88,7 @@ export async function displayNotifications(
     renderEmpty();
     return;
   }
-  renderNotifications(notifications, skipAnimation);
+  await renderNotifications(notifications, skipAnimation);
   applyAvatarsToIssues();
 }
 
