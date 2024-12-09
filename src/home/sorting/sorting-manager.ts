@@ -1,12 +1,10 @@
-import { displayGitHubIssues, searchDisplayGitHubIssues } from "../fetch-github/filter-and-display-notifications";
+import { displayNotifications } from "../fetch-github/filter-and-display-notifications";
 import { renderErrorInModal } from "../rendering/display-popup-modal";
-import { proposalViewToggle } from "../rendering/render-github-notifications";
 import { Sorting } from "./generate-sorting-buttons";
 
 export class SortingManager {
   private _lastChecked: HTMLInputElement | null = null;
   private _toolBarFilters: HTMLElement;
-  private _filterTextBox: HTMLInputElement;
   private _sortingButtons: HTMLElement;
   private _instanceId: string;
   private _sortingState: { [key: string]: "unsorted" | "ascending" | "descending" } = {}; // Track state for each sorting option
@@ -20,8 +18,6 @@ export class SortingManager {
 
     // Initialize sorting buttons first
     this._sortingButtons = this._generateSortingButtons(sortingOptions);
-    // Then initialize filter text box
-    this._filterTextBox = this._generateFilterTextBox();
 
     // Initialize sorting states to 'unsorted' for all options
     sortingOptions.forEach((option) => {
@@ -30,99 +26,7 @@ export class SortingManager {
   }
 
   public render() {
-    this._toolBarFilters.appendChild(this._filterTextBox);
     this._toolBarFilters.appendChild(this._sortingButtons);
-  }
-
-  private _generateFilterTextBox() {
-    const textBox = document.createElement("input");
-    textBox.type = "text";
-    textBox.id = `filter-${this._instanceId}`;
-    textBox.placeholder = "Search";
-    textBox.spellcheck = false;
-    textBox.autocapitalize = "off";
-    textBox.draggable = false;
-
-    // Handle CTRL+F
-    document.addEventListener("keydown", (event) => {
-      if ((event.metaKey || event.ctrlKey) && event.key === "f") {
-        event.preventDefault();
-        textBox.focus();
-      }
-    });
-
-    // Get the search query from the URL (if it exists) and pre-fill the input
-    const urlParams = new URLSearchParams(window.location.search);
-    const searchQuery = urlParams.get("search") || "";
-    textBox.value = searchQuery;
-
-    const issuesContainer = document.getElementById("issues-container") as HTMLDivElement;
-
-    // Observer to detect when children are added to the issues container (only once)
-    const observer = new MutationObserver(() => {
-      if (issuesContainer.children.length > 0) {
-        observer.disconnect(); // Stop observing once children are present
-        if (searchQuery) {
-          try {
-            void searchDisplayGitHubIssues({
-              searchText: searchQuery,
-            });
-          } catch (error) {
-            renderErrorInModal(error as Error);
-          }
-        }
-      }
-    });
-    observer.observe(issuesContainer, { childList: true });
-
-    // if the user types in the search box, update the URL and filter the issues
-    textBox.addEventListener("input", () => {
-      const filterText = textBox.value;
-      // Reset sorting buttons when there is text in search menu
-      if (filterText) {
-        this._resetSortButtons();
-      }
-      // Update the URL with the search parameter
-      const newURL = new URL(window.location.href);
-      if (filterText) {
-        newURL.searchParams.set("search", filterText);
-      } else {
-        newURL.searchParams.delete("search");
-      }
-      window.history.replaceState({}, "", newURL.toString());
-      try {
-        void searchDisplayGitHubIssues({
-          searchText: filterText,
-        });
-      } catch (error) {
-        renderErrorInModal(error as Error);
-      }
-    });
-
-    // if the user changes between proposal view and directory view, update the search results
-    if (proposalViewToggle) {
-      proposalViewToggle.addEventListener("change", () => {
-        try {
-          void searchDisplayGitHubIssues({
-            searchText: textBox.value,
-          });
-        } catch (error) {
-          renderErrorInModal(error as Error);
-        }
-      });
-    }
-
-    return textBox;
-  }
-
-  private _resetSortButtons() {
-    this._sortingButtons.querySelectorAll('input[type="radio"]').forEach((input) => {
-      if (input instanceof HTMLInputElement) {
-        input.checked = false;
-        input.setAttribute("data-ordering", "");
-      }
-    });
-    this._lastChecked = null;
   }
 
   private _generateSortingButtons(sortingOptions: readonly string[]) {
@@ -185,12 +89,6 @@ export class SortingManager {
       }
     });
 
-    // Clear search when applying a different sort
-    this._filterTextBox.value = "";
-    const newURL = new URL(window.location.href);
-    newURL.searchParams.delete("search");
-    window.history.replaceState({}, "", newURL.toString());
-
     // Reset other buttons
     input.parentElement?.childNodes.forEach((node) => {
       if (node instanceof HTMLInputElement) {
@@ -209,7 +107,7 @@ export class SortingManager {
 
       // Apply the sorting based on the new state (normal or reverse)
       try {
-        void displayGitHubIssues({ sorting: option as Sorting, options: { ordering: newOrdering } });
+        void displayNotifications({ sorting: option as Sorting, options: { ordering: newOrdering } });
       } catch (error) {
         renderErrorCatch(error as ErrorEvent);
       }
@@ -218,7 +116,7 @@ export class SortingManager {
 
   private _clearSorting() {
     try {
-      void displayGitHubIssues();
+      void displayNotifications();
     } catch (error) {
       renderErrorInModal(error as Error);
     }

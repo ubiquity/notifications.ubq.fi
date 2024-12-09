@@ -20,7 +20,7 @@ window.addEventListener("unhandledrejection", (event: PromiseRejectionEvent) => 
 });
 
 renderGitRevision();
-//generateSortingToolbar();
+generateSortingToolbar();
 renderServiceMessage();
 
 grid(document.getElementById("grid") as HTMLElement, () => document.body.classList.add("grid-loaded")); // @DEV: display grid background
@@ -30,14 +30,25 @@ if (!notificationsContainer) {
   throw new Error("Could not find issues container");
 }
 
+// Store notifications
+let notifications: Awaited<ReturnType<typeof fetchAllNotifications>> | undefined;
+
+// This is made to make notifications global
+export async function getNotifications() {
+  if (!notifications) {
+    notifications = await fetchAllNotifications();
+  }
+  return notifications;
+}
+
 void (async function home() {
   void authentication();
   void readyToolbar();
-  const notifications = await fetchAllNotifications();
+  const notifications = await getNotifications();
   if(notifications){
     await fetchAvatars(notifications);
   }
-  void displayNotifications(notifications);
+  void displayNotifications();
 
   // Register service worker for PWA
   // if ("serviceWorker" in navigator) {

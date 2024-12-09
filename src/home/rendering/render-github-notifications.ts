@@ -237,17 +237,17 @@ function parseAndGenerateLabels(notification: GitHubAggregated) {
 //   updateUrlWithIssueId(full.id);
 // }
 
-// // Listen for changes in view toggle and update the URL accordingly
-// export const proposalViewToggle = document.getElementById("view-toggle") as HTMLInputElement;
-// proposalViewToggle.addEventListener("change", () => {
-//   const newURL = new URL(window.location.href);
-//   if (proposalViewToggle.checked) {
-//     newURL.searchParams.set("proposal", "true");
-//   } else {
-//     newURL.searchParams.delete("proposal");
-//   }
-//   window.history.replaceState({}, "", newURL.toString());
-// });
+// Listen for changes in view toggle and update the URL accordingly
+export const proposalViewToggle = document.getElementById("view-toggle") as HTMLInputElement;
+proposalViewToggle.addEventListener("change", () => {
+  const newURL = new URL(window.location.href);
+  if (proposalViewToggle.checked) {
+    newURL.searchParams.set("proposal", "true");
+  } else {
+    newURL.searchParams.delete("proposal");
+  }
+  window.history.replaceState({}, "", newURL.toString());
+});
 
 // // Adds issue ID to url in format (i.e http://localhost:8080/?issue=2559612103)
 // function updateUrlWithIssueId(issueID: number) {

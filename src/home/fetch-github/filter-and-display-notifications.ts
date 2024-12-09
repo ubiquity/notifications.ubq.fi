@@ -1,4 +1,5 @@
 import { GitHubAggregated, GitHubNotifications } from "../github-types";
+import { getNotifications } from "../home";
 import { applyAvatarsToNotifications, renderEmpty, renderNotifications } from "../rendering/render-github-notifications";
 import { renderOrgHeaderLabel } from "../rendering/render-org-header";
 import { closeModal } from "../rendering/render-preview-modal";
@@ -29,14 +30,13 @@ viewToggle.addEventListener("click", () => {
 
   // If you are in a preview, close it
   closeModal();
-  void displayGitHubIssues();
 });
 
 function getProposalsOnlyFilter(getProposals: boolean) {
-  return (issue: GitHubNotifications) => {
-    if (!issue?.labels) return false;
+  return (notification: GitHubAggregated) => {
+    if (!notification.issue.labels) return false;
 
-    const hasPriceLabel = issue.labels.some((label) => {
+    const hasPriceLabel = notification.issue.labels.some((label) => {
       if (typeof label === "string") return false;
       return label.name?.startsWith("Price: ") || label.name?.startsWith("Price: ");
     });
@@ -72,7 +72,7 @@ function filterIssuesByOrganization(issues: GitHubNotifications): GitHubNotifica
 
 // checks the cache's integrity, sorts issues, checks Directory/Proposals toggle, renders them and applies avatars
 export async function displayNotifications(
-  notifications: GitHubAggregated[] | null, {
+  {
   sorting,
   options = { ordering: "normal" },
   skipAnimation = false,
@@ -81,6 +81,7 @@ export async function displayNotifications(
   options?: { ordering: string };
   skipAnimation?: boolean;
 } = {}) {
+  const notifications = await getNotifications();
   //const sortedIssues = sortIssuesController(cachedTasks, sorting, options);
   //let sortedAndFiltered = sortedIssues.filter(getProposalsOnlyFilter(isProposalOnlyViewer));
   //sortedAndFiltered = filterIssuesByOrganization(sortedAndFiltered);
