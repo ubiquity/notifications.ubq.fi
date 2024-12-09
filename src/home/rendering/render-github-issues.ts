@@ -7,7 +7,7 @@ import { setupKeyboardNavigation } from "./setup-keyboard-navigation";
 import { getTimeAgo, waitForElement } from "./utils";
 import { notificationsContainer } from "../home";
 
-export function renderNotifications(notifications: GitHubAggregated[], skipAnimation: boolean) {
+export async function renderNotifications(notifications: GitHubAggregated[], skipAnimation: boolean) {
   if (notificationsContainer.classList.contains("ready")) {
     notificationsContainer.classList.remove("ready");
     notificationsContainer.innerHTML = "";
@@ -21,7 +21,7 @@ export function renderNotifications(notifications: GitHubAggregated[], skipAnima
 
   for (const notification of notifications) {
     if (!existingNotificationIds.has(notification.notification.id.toString())) {
-      const issueWrapper = everyNewNotification({ notification: notification, notificationsContainer });
+      const issueWrapper = await everyNewNotification({ notification: notification, notificationsContainer });
       if (issueWrapper) {
         if (skipAnimation) {
           issueWrapper.classList.add("active");
@@ -54,7 +54,7 @@ export function renderEmpty(){
   notificationsContainer.classList.add("ready");
 }
 
-function everyNewNotification({ notification, notificationsContainer }: { notification: GitHubAggregated; notificationsContainer: HTMLDivElement }) {
+async function everyNewNotification({ notification, notificationsContainer }: { notification: GitHubAggregated; notificationsContainer: HTMLDivElement }) {
   const issueWrapper = document.createElement("div");
   const issueElement = document.createElement("div");
   issueElement.setAttribute("data-issue-id", notification.notification.id.toString());
@@ -62,12 +62,26 @@ function everyNewNotification({ notification, notificationsContainer }: { notifi
 
   const labels = parseAndGenerateLabels(notification);
   const [organizationName, repositoryName] = notification.notification.repository.url.split("/").slice(-2);
+  
   let url;
-  if(notification.notification.subject.type === "Issue"){
-    url = notification.issue.html_url;
-  } else if(notification.notification.subject.type === "PullRequest"){
-    url = notification.pullRequest?.html_url;
+  if (notification.notification.subject.latest_comment_url) {
+    try {
+      const response = await fetch(notification.notification.subject.latest_comment_url);
+      const data = await response.json();
+      url = data.html_url;
+      console.log(url);
+    } catch (error) {
+      console.error("Failed to fetch latest comment URL:", error);
+    }
   }
+  if(!url){
+    if(notification.notification.subject.type === "Issue"){
+      url = notification.issue.html_url;
+    } else if(notification.notification.subject.type === "PullRequest"){
+      url = notification.pullRequest?.html_url as string;
+    }
+  }
+  
   setUpIssueElement(issueElement, notification, organizationName, repositoryName, labels, url as string);
   issueWrapper.appendChild(issueElement);
 
