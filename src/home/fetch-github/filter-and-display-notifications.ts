@@ -1,5 +1,5 @@
 import { GitHubAggregated, GitHubNotifications } from "../github-types";
-import { applyAvatarsToIssues, renderEmpty, renderNotifications } from "../rendering/render-github-issues";
+import { applyAvatarsToNotifications, renderEmpty, renderNotifications } from "../rendering/render-github-notifications";
 import { renderOrgHeaderLabel } from "../rendering/render-org-header";
 import { closeModal } from "../rendering/render-preview-modal";
 import { filterIssuesBySearch } from "../sorting/filter-issues-by-search";
@@ -89,7 +89,7 @@ export async function displayNotifications(
     return;
   }
   await renderNotifications(notifications, skipAnimation);
-  applyAvatarsToIssues();
+  applyAvatarsToNotifications();
 }
 
 export async function searchDisplayGitHubIssues({ searchText, skipAnimation = false }: { searchText: string; skipAnimation?: boolean }) {
@@ -97,5 +97,5 @@ export async function searchDisplayGitHubIssues({ searchText, skipAnimation = fa
   let filteredIssues = searchResult.filter(getProposalsOnlyFilter(isProposalOnlyViewer));
   filteredIssues = filterIssuesByOrganization(filteredIssues);
   renderNotifications(filteredIssues, skipAnimation);
-  applyAvatarsToIssues();
+  applyAvatarsToNotifications();
 }

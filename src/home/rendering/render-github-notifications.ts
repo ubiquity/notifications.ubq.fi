@@ -282,7 +282,7 @@ function parseAndGenerateLabels(notification: GitHubAggregated) {
 //   void viewIssueDetails(issue);
 // }
 
-export function applyAvatarsToIssues() {
+export function applyAvatarsToNotifications() {
   const notificationsContainer = document.getElementById("issues-container") as HTMLDivElement;
   const notificationElements = Array.from(notificationsContainer.querySelectorAll(".issue-element-inner"));
 

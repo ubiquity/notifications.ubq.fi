@@ -1,6 +1,6 @@
-import { displayGitHubIssues, searchDisplayGitHubIssues } from "../fetch-github/fetch-and-display-previews";
+import { displayGitHubIssues, searchDisplayGitHubIssues } from "../fetch-github/filter-and-display-notifications";
 import { renderErrorInModal } from "../rendering/display-popup-modal";
-import { proposalViewToggle } from "../rendering/render-github-issues";
+import { proposalViewToggle } from "../rendering/render-github-notifications";
 import { Sorting } from "./generate-sorting-buttons";
 
 export class SortingManager {

@@ -21,6 +21,7 @@ export function waitForElement(selector: string): Promise<Element> {
   });
 }
 
+// Returns string in format: 4 hours ago, 10 weeks ago, etc.
 export function getTimeAgo(date: Date): string {
   const now = new Date();
   const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);

@@ -1,6 +1,6 @@
 import { grid } from "../the-grid";
 import { authentication } from "./authentication";
-import { displayNotifications } from "./fetch-github/fetch-and-display-previews";
+import { displayNotifications } from "./fetch-github/filter-and-display-notifications";
 import { fetchAvatars } from "./fetch-github/fetch-avatar";
 import { fetchAllNotifications, fetchIssueNotifications, fetchPullRequestNotifications } from "./fetch-github/fetch-data";
 import { GitHubNotifications } from "./github-types";
