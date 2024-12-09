@@ -89,6 +89,7 @@ async function fetchIssueFromPullRequest(pullRequest: GitHubPullRequest): Promis
   // Match the issue reference in the PR body
   const issueUrlMatch = pullRequest.body.match(/Resolves (https:\/\/github\.com\/(.+?)\/(.+?)\/issues\/(\d+))/);
   const issueNumberMatch = pullRequest.body.match(/Resolves #(\d+)/);
+  const issueMarkdownLinkMatch = pullRequest.body.match(/Resolves \[\s*#(\d+)\s*\]/);
 
   let apiUrl: string;
 
@@ -96,9 +97,9 @@ async function fetchIssueFromPullRequest(pullRequest: GitHubPullRequest): Promis
     // Full URL to the issue is provided
     const [, , owner, repo, issueNumber] = issueUrlMatch;
     apiUrl = `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}`;
-  } else if (issueNumberMatch) {
+  } else if (issueNumberMatch || issueMarkdownLinkMatch) {
     // Only issue number is provided, construct API URL using current repo info
-    const issueNumber = issueNumberMatch[1];
+    const issueNumber = issueNumberMatch ? issueNumberMatch[1] : issueMarkdownLinkMatch![1];
     const pullRequestUrlMatch = pullRequest.url.match(/repos\/(.+?)\/(.+?)\/pulls\/\d+/);
     if (!pullRequestUrlMatch) return null;
 
