@@ -247,7 +247,7 @@
     text-align: center;
     white-space: nowrap;
     background-color: #80808020;
-    width: 64px;
+    width: 86px;
     letter-spacing: 0.5px;
     flex-grow: 4;
     justify-content: center;
@@ -257,12 +257,6 @@
     text-overflow: ellipsis;
     overflow: hidden;
     display: inline-block;
-  }
-  label.reason {
-    width: 86px;
-  }
-  label.timestamp {
-    width: 86px;
   }
   input[type="radio"] {
     background-color: unset;
