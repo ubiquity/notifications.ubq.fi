@@ -258,12 +258,6 @@
     overflow: hidden;
     display: inline-block;
   }
-  label.reason {
-    width: 86px;
-  }
-  label.timestamp {
-    width: 86px;
-  }
   input[type="radio"] {
     background-color: unset;
     cursor: default;
