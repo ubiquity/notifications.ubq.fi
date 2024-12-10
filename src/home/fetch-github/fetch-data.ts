@@ -29,7 +29,7 @@ function preFilterNotifications(notifications: GitHubNotification[]): GitHubNoti
   return notifications.filter((notification) => {
     // Ignore based on reason
     if (
-      ["author", "comment", "ci_activity", "invitation", "member_feature_requested", "security_advisory_credit", "state_change", "team_mention"].includes(
+      ["comment", "ci_activity", "invitation", "member_feature_requested", "security_advisory_credit", "state_change", "team_mention"].includes(
         notification.reason
       )
     ) {
