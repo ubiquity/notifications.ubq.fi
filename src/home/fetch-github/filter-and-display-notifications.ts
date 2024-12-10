@@ -5,7 +5,7 @@ import { renderOrgHeaderLabel } from "../rendering/render-org-header";
 import { closeModal } from "../rendering/render-preview-modal";
 import { filterIssuesBySearch } from "../sorting/filter-issues-by-search";
 import { Sorting } from "../sorting/generate-sorting-buttons";
-import { sortIssuesController } from "../sorting/sort-issues-controller";
+import { sortIssuesController } from "../sorting/sort-controller";
 
 export type Options = {
   ordering: "normal" | "reverse";
@@ -82,21 +82,13 @@ export async function displayNotifications(
   skipAnimation?: boolean;
 } = {}) {
   const notifications = await getNotifications();
-  //const sortedIssues = sortIssuesController(cachedTasks, sorting, options);
-  //let sortedAndFiltered = sortedIssues.filter(getProposalsOnlyFilter(isProposalOnlyViewer));
-  //sortedAndFiltered = filterIssuesByOrganization(sortedAndFiltered);
   if(notifications === null || notifications.length === 0){
     renderEmpty();
     return;
   }
-  await renderNotifications(notifications, skipAnimation);
-  applyAvatarsToNotifications();
-}
-
-export async function searchDisplayGitHubIssues({ searchText, skipAnimation = false }: { searchText: string; skipAnimation?: boolean }) {
-  const searchResult = filterIssuesBySearch(searchText);
-  let filteredIssues = searchResult.filter(getProposalsOnlyFilter(isProposalOnlyViewer));
-  filteredIssues = filterIssuesByOrganization(filteredIssues);
-  renderNotifications(filteredIssues, skipAnimation);
+  const sortedIssues = sortIssuesController(notifications, sorting, options);
+  //let sortedAndFiltered = sortedIssues.filter(getProposalsOnlyFilter(isProposalOnlyViewer));
+  //sortedAndFiltered = filterIssuesByOrganization(sortedAndFiltered);
+  await renderNotifications(sortedIssues, skipAnimation);
   applyAvatarsToNotifications();
 }

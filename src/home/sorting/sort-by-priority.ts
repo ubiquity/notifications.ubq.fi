@@ -1,11 +1,11 @@
-import { GitHubNotifications } from "../github-types";
+import { GitHubAggregated } from "../github-types";
 
-export function sortIssuesByPriority(issues: GitHubNotifications) {
+export function sortByPriority(notifications: GitHubAggregated[]) {
   const priorityRegex = /Priority: (\d+)/;
 
-  return issues.sort((a, b) => {
-    function getPriority(issue: GitHubNotifications) {
-      const priorityLabel = issue.labels.find(
+  return notifications.sort((a, b) => {
+    function getPriority(notification: GitHubAggregated) {
+      const priorityLabel = notification.issue.labels.find(
         (label): label is { name: string } => typeof label === "object" && "name" in label && typeof label.name === "string" && priorityRegex.test(label.name)
       );
       const match = priorityLabel?.name.match(priorityRegex);
