@@ -1,10 +1,7 @@
-import { marked } from "marked";
 import { organizationImageCache } from "../fetch-github/fetch-data";
-import { GitHubAggregated, GitHubIssue, GitHubNotification, GitHubNotifications } from "../github-types";
+import { GitHubAggregated } from "../github-types";
 import { renderErrorInModal } from "./display-popup-modal";
-import { closeModal, modal, modalBodyInner, bottomBar, titleAnchor, titleHeader, bottomBarClearLabels } from "./render-preview-modal";
-import { setupKeyboardNavigation } from "./setup-keyboard-navigation";
-import { getTimeAgo, waitForElement } from "./utils";
+import { getTimeAgo } from "./utils";
 import { notificationsContainer } from "../home";
 
 export async function renderNotifications(notifications: GitHubAggregated[], skipAnimation: boolean) {
@@ -40,6 +37,10 @@ export async function renderNotifications(notifications: GitHubAggregated[], ski
   window.scrollTo({ top: 0 });
 }
 export function renderEmpty(){
+  if (notificationsContainer.classList.contains("ready")) {
+    notificationsContainer.classList.remove("ready");
+    notificationsContainer.innerHTML = "";
+  }
   const issueWrapper = document.createElement("div");
   issueWrapper.style.marginTop = "20px";
   const issueElement = document.createElement("div");
