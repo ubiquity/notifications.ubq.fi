@@ -10,7 +10,7 @@ export function sortIssuesController(tasks: GitHubAggregated[], sorting?: Sortin
   if (sorting) {
     sortedNotifications = sortBy(sortedNotifications, sorting);
   } else {
-    const sortedByFreshness = sortByOldest(sortedNotifications);  // oldest first
+    const sortedByFreshness = sortByOldest(sortedNotifications); // oldest first
     const sortedByPriority = sortByPriority(sortedByFreshness); // highest priority first
     sortedNotifications = sortedByPriority;
   }
