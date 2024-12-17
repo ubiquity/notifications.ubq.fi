@@ -215,17 +215,13 @@ function countBacklinks(aggregated: GitHubAggregated, allPullRequests: GitHubPul
 // Fetch all notifications and return them as an array of aggregated data
 export async function fetchAllNotifications(): Promise<GitHubAggregated[] | null> {
   // fetches all notifications, pull requests and issues in parallel
-  const [notifications, pullRequests, issues] = await Promise.all([
-    fetchNotifications(),
-    fetchPullRequests(),
-    fetchIssues()
-  ]);
+  const [notifications, pullRequests, issues] = await Promise.all([fetchNotifications(), fetchPullRequests(), fetchIssues()]);
 
   if (!notifications || !pullRequests || !issues) return null;
 
   const [pullRequestNotifications, issueNotifications] = await Promise.all([
     getPullRequestNotifications(notifications, pullRequests, issues),
-    getIssueNotifications(notifications, issues)
+    getIssueNotifications(notifications, issues),
   ]);
 
   if (!pullRequestNotifications && !issueNotifications) return null;
