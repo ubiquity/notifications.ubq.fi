@@ -2,7 +2,7 @@ import { GitHubAggregated } from "../github-types";
 import { Sorting } from "./generate-sorting-buttons";
 import { sortBy } from "./sort-by";
 import { sortByPriority } from "./sort-by-priority";
-import { sortByOldest } from "./sort-by-oldest";
+import { sortByActivity } from "./sort-by-activity";
 
 export function sortIssuesController(tasks: GitHubAggregated[], sorting?: Sorting, options = { ordering: "normal" }) {
   let sortedNotifications = tasks;
@@ -10,7 +10,7 @@ export function sortIssuesController(tasks: GitHubAggregated[], sorting?: Sortin
   if (sorting) {
     sortedNotifications = sortBy(sortedNotifications, sorting);
   } else {
-    const sortedByFreshness = sortByOldest(sortedNotifications); // oldest first
+    const sortedByFreshness = sortByActivity(sortedNotifications); // activity first
     const sortedByPriority = sortByPriority(sortedByFreshness); // highest priority first
     sortedNotifications = sortedByPriority;
   }
