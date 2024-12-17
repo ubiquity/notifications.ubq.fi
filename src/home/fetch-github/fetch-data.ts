@@ -99,7 +99,7 @@ async function fetchIssueFromPullRequest(pullRequest: GitHubPullRequest, issues:
 }
 
 // Function to fetch pull request notifications with related pull request and issue data
-export async function fetchPullRequestNotifications(
+export async function getPullRequestNotifications(
   notifications: GitHubNotification[],
   pullRequests: GitHubPullRequest[],
   issues: GitHubIssue[]
@@ -131,7 +131,7 @@ export async function fetchPullRequestNotifications(
 }
 
 // Function to fetch issue notifications with related issue data
-export async function fetchIssueNotifications(notifications: GitHubNotification[], issues: GitHubIssue[]): Promise<GitHubAggregated[] | null> {
+export function getIssueNotifications(notifications: GitHubNotification[], issues: GitHubIssue[]): GitHubAggregated[] | null {
   if (!notifications) return null;
 
   const aggregatedData: GitHubAggregated[] = [];
@@ -214,18 +214,21 @@ function countBacklinks(aggregated: GitHubAggregated, allPullRequests: GitHubPul
 
 // Fetch all notifications and return them as an array of aggregated data
 export async function fetchAllNotifications(): Promise<GitHubAggregated[] | null> {
-  const notifications = await fetchNotifications();
-  const pullRequests = await fetchPullRequests();
-  const issues = await fetchIssues();
+  // fetches all notifications, pull requests and issues in parallel
+  const [notifications, pullRequests, issues] = await Promise.all([
+    fetchNotifications(),
+    fetchPullRequests(),
+    fetchIssues()
+  ]);
 
   if (!notifications || !pullRequests || !issues) return null;
 
-  const pullRequestNotifications = await fetchPullRequestNotifications(notifications, pullRequests, issues);
-  const issueNotifications = await fetchIssueNotifications(notifications, issues);
+  const [pullRequestNotifications, issueNotifications] = await Promise.all([
+    getPullRequestNotifications(notifications, pullRequests, issues),
+    getIssueNotifications(notifications, issues)
+  ]);
 
   if (!pullRequestNotifications && !issueNotifications) return null;
-  if (!pullRequestNotifications) return issueNotifications;
-  if (!issueNotifications) return pullRequestNotifications;
 
   const allNotifications = testAllNotifications;
 
