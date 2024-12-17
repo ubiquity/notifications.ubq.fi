@@ -291,10 +291,10 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    margin-top: 2px;
-  }
-  .text-info > .partner > * {
-    display: inline-block;
+    display: flex;
+    align-items: start;
+    padding: 6px 0px 8px 0px;
+    gap: 4px;
   }
   body {
     display: flex;
@@ -444,6 +444,11 @@
   @media screen and (max-width: 3000px) {
     .partner {
       margin-top: 0;
+    }
+    .full-repo-name {
+      display: unset;
+      display: flex;
+      width: auto;
     }
     .issue-element-inner > * {
       max-width: unset;

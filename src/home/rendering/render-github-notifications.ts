@@ -98,8 +98,11 @@ function setUpIssueElement(issueElement: HTMLDivElement, notification: GitHubAgg
           <h3>${notification.notification.subject.title}</h3>
         </div>
         <div class="partner">
-          <p class="organization-name">${organizationName}</p>
-          <p class="repository-name">${repositoryName}</p>
+          <div class="full-repo-name">
+            <p class="organization-name">${organizationName}</p>
+            <p class="repository-name">${repositoryName}</p>
+          </div>
+          <p class="issue-number">#${notification.notification.subject.url.split("/").slice(-1)}</p>
         </div>
       </div>
     </div>
