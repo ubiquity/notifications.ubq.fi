@@ -1,11 +1,10 @@
 import { organizationImageCache } from "../fetch-github/fetch-data";
 import { GitHubAggregated } from "../github-types";
-import { renderErrorInModal } from "./display-popup-modal";
 import { getTimeAgo } from "./utils";
 import { notificationsContainer } from "../home";
 import { getGitHubAccessToken } from "../getters/get-github-access-token";
 
-export async function renderNotifications(notifications: GitHubAggregated[], skipAnimation: boolean) {
+export function renderNotifications(notifications: GitHubAggregated[], skipAnimation: boolean) {
   if (notificationsContainer.classList.contains("ready")) {
     notificationsContainer.classList.remove("ready");
     notificationsContainer.innerHTML = "";
@@ -17,11 +16,11 @@ export async function renderNotifications(notifications: GitHubAggregated[], ski
   let delay = 0;
   const baseDelay = 1000 / 15; // Base delay in milliseconds
 
-  const providerToken = await getGitHubAccessToken();
+  const notificationsToUpdate: { element: HTMLElement; notification: GitHubAggregated }[] = [];
 
   for (const notification of notifications) {
     if (!existingNotificationIds.has(notification.notification.id.toString())) {
-      const issueWrapper = await everyNewNotification({ notification: notification, notificationsContainer, providerToken: providerToken });
+      const issueWrapper = everyNewNotification({ notification: notification, notificationsContainer });
       if (issueWrapper) {
         if (skipAnimation) {
           issueWrapper.classList.add("active");
@@ -29,15 +28,17 @@ export async function renderNotifications(notifications: GitHubAggregated[], ski
           setTimeout(() => issueWrapper.classList.add("active"), delay);
           delay += baseDelay;
         }
+
+        notificationsToUpdate.push({ element: issueWrapper, notification });
       }
     }
   }
   notificationsContainer.classList.add("ready");
-  // Call this function after the issues have been rendered
-  //setupKeyboardNavigation(notificationsContainer);
 
   // Scroll to the top of the page
   window.scrollTo({ top: 0 });
+
+  void updateLatestCommentUrls(notificationsToUpdate);
 }
 export function renderEmpty() {
   if (notificationsContainer.classList.contains("ready")) {
@@ -68,14 +69,12 @@ notificationTemplate.innerHTML = `
   </div>
 `;
 
-async function everyNewNotification({
+function everyNewNotification({
   notification,
-  notificationsContainer,
-  providerToken,
+  notificationsContainer
 }: {
   notification: GitHubAggregated;
   notificationsContainer: HTMLDivElement;
-  providerToken: string | null;
 }) {
   // clone the template
   const issueWrapper = notificationTemplate.cloneNode(true) as HTMLDivElement;
@@ -87,29 +86,7 @@ async function everyNewNotification({
   const labels = parseAndGenerateLabels(notification);
   const [organizationName, repositoryName] = notification.notification.repository.url.split("/").slice(-2);
 
-  let url;
-  if (notification.notification.subject.latest_comment_url) {
-    try {
-      const response = await fetch(notification.notification.subject.latest_comment_url, {
-        headers: {
-          Authorization: `Bearer ${providerToken}`,
-        },
-      });
-      const data = await response.json();
-      url = data.html_url;
-    } catch (error) {
-      console.error("Failed to fetch latest comment URL:", error);
-    }
-  }
-  if (!url) {
-    if (notification.notification.subject.type === "Issue") {
-      url = notification.issue.html_url;
-    } else if (notification.notification.subject.type === "PullRequest") {
-      url = notification.pullRequest?.html_url as string;
-    }
-  }
-
-  setUpIssueElement(issueElement, notification, organizationName, repositoryName, labels, url as string);
+  setUpIssueElement(issueElement, notification, organizationName, repositoryName, labels);
   issueWrapper.appendChild(issueElement);
 
   notificationsContainer.appendChild(issueWrapper);
@@ -121,8 +98,7 @@ function setUpIssueElement(
   notification: GitHubAggregated,
   organizationName: string,
   repositoryName: string,
-  labels: string[],
-  url: string
+  labels: string[]
 ) {
   const image = `<img />`;
 
@@ -160,26 +136,6 @@ function setUpIssueElement(
         </svg>
       `;
   }
-
-  issueElement.addEventListener("click", () => {
-    try {
-      const issueWrapper = issueElement.parentElement;
-
-      if (!issueWrapper) {
-        throw new Error("No issue notificationsContainer found");
-      }
-
-      Array.from(issueWrapper.parentElement?.children || []).forEach((sibling) => {
-        sibling.classList.remove("selected");
-      });
-
-      issueWrapper.classList.add("selected");
-
-      window.open(url, "_blank");
-    } catch (error) {
-      return renderErrorInModal(error as Error);
-    }
-  });
 }
 
 function parseAndGenerateLabels(notification: GitHubAggregated) {
@@ -221,48 +177,41 @@ function parseAndGenerateLabels(notification: GitHubAggregated) {
 
   return labels;
 }
-// // Function to update and show the preview
-// function previewIssue(notification: GitHubNotifications) {
-//   void viewIssueDetails(notification);
-// }
 
-// // Loads the issue preview modal with the issue details
-// export async function viewIssueDetails(full: GitHubNotifications) {
-//   // Update the title and body for the new issue
-//   titleHeader.textContent = full.title;
-//   titleAnchor.href = full.html_url;
-//   if (!full.body) return;
+// fetches latest comment from each notification and add click event to open the comment
+async function updateLatestCommentUrls(
+  notificationsToUpdate: { element: HTMLElement; notification: GitHubAggregated }[]
+) {
+  const providerToken = await getGitHubAccessToken();
+  const fetchPromises = notificationsToUpdate.map(async ({ element, notification }) => {
+    const { subject } = notification.notification;
+    let url = "";
 
-//   // Remove any existing cloned labels from the bottom bar
-//   bottomBarClearLabels();
+    if (subject.latest_comment_url) {
+      try {
+        const response = await fetch(subject.latest_comment_url, {
+          headers: { Authorization: `Bearer ${providerToken}` },
+        });
+        const data = await response.json();
+        url = data.html_url;
+      } catch (error) {
+        console.error("Failed to fetch latest comment URL:", error);
+      }
+    }
 
-//   // Wait for the issue element to exist, useful when loading issue from URL
-//   const issueElement = await waitForElement(`div[data-issue-id="${full.id}"]`);
+    if (!url) {
+      url = notification.issue?.html_url || notification.pullRequest?.html_url || "#";
+    }
 
-//   const labelsDiv = issueElement.querySelector(".labels");
-//   if (labelsDiv) {
-//     // Clone the labels div and remove the img child if it exists
-//     const clonedLabels = labelsDiv.cloneNode(true) as HTMLElement;
-//     const imgElement = clonedLabels.querySelector("img");
-//     if (imgElement) clonedLabels.removeChild(imgElement);
+    // update the rendered element with the real URL
+    const issueElement = element.querySelector(".issue-element-inner");
+    if (issueElement) {
+      issueElement.addEventListener("click", () => window.open(url, "_blank"));
+    }
+  });
 
-//     // Add an extra class and set padding
-//     clonedLabels.classList.add("cloned-labels");
-
-//     // Prepend the cloned labels to the modal body
-//     bottomBar.prepend(clonedLabels);
-//   }
-
-//   // Set the issue body content using `marked`
-//   modalBodyInner.innerHTML = marked(full.body) as string;
-
-//   // Show the preview
-//   modal.classList.add("active");
-//   modal.classList.remove("error");
-//   document.body.classList.add("preview-active");
-
-//   updateUrlWithIssueId(full.id);
-// }
+  await Promise.all(fetchPromises);
+}
 
 // Listen for changes in view toggle and update the URL accordingly
 export const proposalViewToggle = document.getElementById("view-toggle") as HTMLInputElement;
@@ -275,39 +224,6 @@ proposalViewToggle.addEventListener("change", () => {
   }
   window.history.replaceState({}, "", newURL.toString());
 });
-
-// // Adds issue ID to url in format (i.e http://localhost:8080/?issue=2559612103)
-// function updateUrlWithIssueId(issueID: number) {
-//   const newURL = new URL(window.location.href);
-//   newURL.searchParams.set("issue", String(issueID));
-
-//   // Set issue in URL
-//   window.history.replaceState({ issueID }, "", newURL.toString());
-// }
-
-// // Opens the preview modal if a URL contains an issueID
-// export function loadIssueFromUrl() {
-//   const urlParams = new URLSearchParams(window.location.search);
-//   const issueID = urlParams.get("issue");
-
-//   // If no issue ID in the URL, don't load issue
-//   if (!issueID) {
-//     closeModal();
-//     return;
-//   }
-
-//   // If ID doesn't exist, don't load issue
-//   const issue: GitHubNotifications = notificationManager.getnotificationById(Number(issueID)) as GitHubNotifications;
-
-//   if (!issue) {
-//     const newURL = new URL(window.location.href);
-//     newURL.searchParams.delete("issue");
-//     window.history.pushState({}, "", newURL.toString());
-//     return;
-//   }
-
-//   void viewIssueDetails(issue);
-// }
 
 export function applyAvatarsToNotifications() {
   const notificationsContainer = document.getElementById("issues-container") as HTMLDivElement;
