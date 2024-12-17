@@ -3,6 +3,7 @@ import { GitHubAggregated, GitHubIssue, GitHubNotification, GitHubNotifications,
 import { getGitHubAccessToken } from "../getters/get-github-access-token";
 import { handleRateLimit } from "./handle-rate-limit";
 import { RequestError } from "@octokit/request-error";
+import { testAllNotifications } from "./test-all-notifications";
 // import { testAllNotifications } from "./test-all-notifications";
 
 export const organizationImageCache = new Map<string, Blob | null>(); // this should be declared in image related script
@@ -98,8 +99,7 @@ async function fetchIssueFromPullRequest(pullRequest: GitHubPullRequest, issues:
 }
 
 // Function to fetch pull request notifications with related pull request and issue data
-export async function fetchPullRequestNotifications(pullRequests: GitHubPullRequest[], issues: GitHubIssue[]): Promise<GitHubAggregated[] | null> {
-  const notifications = await fetchNotifications();
+export async function fetchPullRequestNotifications(notifications: GitHubNotification[], pullRequests: GitHubPullRequest[], issues: GitHubIssue[]): Promise<GitHubAggregated[] | null> {
   if (!notifications) return null;
 
   const aggregatedData: GitHubAggregated[] = [];
@@ -127,8 +127,7 @@ export async function fetchPullRequestNotifications(pullRequests: GitHubPullRequ
 }
 
 // Function to fetch issue notifications with related issue data
-export async function fetchIssueNotifications(issues: GitHubIssue[]): Promise<GitHubAggregated[] | null> {
-  const notifications = await fetchNotifications();
+export async function fetchIssueNotifications(notifications: GitHubNotification[], issues: GitHubIssue[]): Promise<GitHubAggregated[] | null> {
   if (!notifications) return null;
 
   const aggregatedData: GitHubAggregated[] = [];
@@ -211,17 +210,20 @@ function countBacklinks(aggregated: GitHubAggregated, allPullRequests: GitHubPul
 
 // Fetch all notifications and return them as an array of aggregated data
 export async function fetchAllNotifications(): Promise<GitHubAggregated[] | null> {
+  const notifications = await fetchNotifications();
   const pullRequests = await fetchPullRequests();
   const issues = await fetchIssues();
 
-  const pullRequestNotifications = await fetchPullRequestNotifications(pullRequests, issues);
-  const issueNotifications = await fetchIssueNotifications(issues);
+  if(!notifications || !pullRequests || !issues) return null;
+
+  const pullRequestNotifications = await fetchPullRequestNotifications(notifications, pullRequests, issues);
+  const issueNotifications = await fetchIssueNotifications(notifications, issues);
 
   if (!pullRequestNotifications && !issueNotifications) return null;
   if (!pullRequestNotifications) return issueNotifications;
   if (!issueNotifications) return pullRequestNotifications;
 
-  const allNotifications = [...pullRequestNotifications, ...issueNotifications]; //testAllNotifications; for testing
+  const allNotifications = testAllNotifications;
 
   // add backlink counts to each notification
   for (const aggregated of allNotifications) {
