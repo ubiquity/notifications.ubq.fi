@@ -72,16 +72,16 @@ export class SortingManager {
           let searchableStrings: string[] = [];
 
           // if it's an issue notification search issue properties
-          if(gitHubNotification.notification.subject.type === "Issue"){
+          if (gitHubNotification.notification.subject.type === "Issue") {
             searchableStrings = searchableProperties
               .map((prop) => gitHubNotification.issue[prop]?.toString().toLowerCase())
               .filter((str): str is string => str !== undefined);
-          } 
-          
+          }
+
           // if it's a pull request notification search pull request properties
-          else if(gitHubNotification.notification.subject.type === "PullRequest"){
+          else if (gitHubNotification.notification.subject.type === "PullRequest") {
             searchableStrings = searchableProperties
-              .map((prop) => gitHubNotification.pullRequest ? gitHubNotification.pullRequest[prop]?.toString().toLowerCase() : "")
+              .map((prop) => (gitHubNotification.pullRequest ? gitHubNotification.pullRequest[prop]?.toString().toLowerCase() : ""))
               .filter((str): str is string => str !== undefined);
           }
 
@@ -176,12 +176,12 @@ export class SortingManager {
       }
     });
 
-     // Clear search when applying a different sort
-     this._filterTextBox.value = "";
-     const newURL = new URL(window.location.href);
-     newURL.searchParams.delete("search");
-     window.history.replaceState({}, "", newURL.toString());
-     
+    // Clear search when applying a different sort
+    this._filterTextBox.value = "";
+    const newURL = new URL(window.location.href);
+    newURL.searchParams.delete("search");
+    window.history.replaceState({}, "", newURL.toString());
+
     // Reset other buttons
     input.parentElement?.childNodes.forEach((node) => {
       if (node instanceof HTMLInputElement) {
