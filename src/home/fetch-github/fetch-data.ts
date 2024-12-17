@@ -38,7 +38,7 @@ export async function fetchPullRequests(): Promise<GitHubPullRequest[]> {
 }
 
 // Pre-filter notifications by general rules (repo filtering and ignoring CI activity)
-function preFilterNotifications(notifications: GitHubNotification[]): GitHubNotifications {
+function preFilterNotifications(devpoolRepos: Set<string>, notifications: GitHubNotification[]): GitHubNotifications {
   return notifications.filter((notification) => {
     // Ignore based on reason
     if (
@@ -49,20 +49,20 @@ function preFilterNotifications(notifications: GitHubNotification[]): GitHubNoti
       return false;
     }
 
-    // Ignore notifications from orgs that are not relevant
-    const repoName = notification.repository.full_name.split("/")[0];
-    return ["ubiquity", "ubiquity-os", "ubiquity-os-marketplace"].includes(repoName);
+    // Ignore notifications from repos that are not in devpoolRepos
+    const repoName = notification.repository.full_name;
+    return devpoolRepos.has(repoName);
   });
 }
 
 // Function to filter pull request notifications
-function filterPullRequestNotifications(notifications: GitHubNotification[]): GitHubNotifications {
-  return preFilterNotifications(notifications).filter((notification) => notification.subject.type === "PullRequest");
+function filterPullRequestNotifications(devpoolRepos: Set<string>, notifications: GitHubNotification[]): GitHubNotifications {
+  return preFilterNotifications(devpoolRepos, notifications).filter((notification) => notification.subject.type === "PullRequest");
 }
 
 // Function to filter issue notifications
-function filterIssueNotifications(notifications: GitHubNotification[]): GitHubNotifications {
-  return preFilterNotifications(notifications).filter((notification) => notification.subject.type === "Issue");
+function filterIssueNotifications(devpoolRepos: Set<string>, notifications: GitHubNotification[]): GitHubNotifications {
+  return preFilterNotifications(devpoolRepos, notifications).filter((notification) => notification.subject.type === "Issue");
 }
 
 async function fetchIssueFromPullRequest(pullRequest: GitHubPullRequest, issues: GitHubIssue[]): Promise<GitHubIssue | null> {
@@ -99,6 +99,7 @@ async function fetchIssueFromPullRequest(pullRequest: GitHubPullRequest, issues:
 
 // Function to fetch pull request notifications with related pull request and issue data
 export async function getPullRequestNotifications(
+  devpoolRepos: Set<string>, 
   notifications: GitHubNotification[],
   pullRequests: GitHubPullRequest[],
   issues: GitHubIssue[]
@@ -106,7 +107,7 @@ export async function getPullRequestNotifications(
   if (!notifications) return null;
 
   const aggregatedData: GitHubAggregated[] = [];
-  const filteredNotifications = filterPullRequestNotifications(notifications);
+  const filteredNotifications = filterPullRequestNotifications(devpoolRepos, notifications);
 
   for (const notification of filteredNotifications) {
     const pullRequestUrl = notification.subject.url;
@@ -130,11 +131,11 @@ export async function getPullRequestNotifications(
 }
 
 // Function to fetch issue notifications with related issue data
-export function getIssueNotifications(notifications: GitHubNotification[], issues: GitHubIssue[]): GitHubAggregated[] | null {
+export function getIssueNotifications(devpoolRepos: Set<string>, notifications: GitHubNotification[], issues: GitHubIssue[]): GitHubAggregated[] | null {
   if (!notifications) return null;
 
   const aggregatedData: GitHubAggregated[] = [];
-  const filteredNotifications = filterIssueNotifications(notifications);
+  const filteredNotifications = filterIssueNotifications(devpoolRepos, notifications);
 
   for (const notification of filteredNotifications) {
     const issueUrl = notification.subject.url;
@@ -211,16 +212,33 @@ function countBacklinks(aggregated: GitHubAggregated, allPullRequests: GitHubPul
   return totalCount;
 }
 
+function getDevpoolRepos(pullRequests: GitHubPullRequest[], issues: GitHubIssue[]): Set<string> {
+    const uniqueNames = new Set<string>();
+
+    for (const pullRequest of pullRequests) {
+      const [ownerName, repoName] = pullRequest.base.repo.url.split("/").slice(-2);
+      uniqueNames.add(`${ownerName}/${repoName}`);
+    }
+  
+    for (const issue of issues) {
+      const [issueOwner, issueRepo] = issue.repository_url.split("/").slice(-2);
+      uniqueNames.add(`${issueOwner}/${issueRepo}`);
+    }
+    return uniqueNames;
+}
+
 // Fetch all notifications and return them as an array of aggregated data
 export async function fetchAllNotifications(): Promise<GitHubAggregated[] | null> {
   // fetches all notifications, pull requests and issues in parallel
   const [notifications, pullRequests, issues] = await Promise.all([fetchNotifications(), fetchPullRequests(), fetchIssues()]);
-
   if (!notifications || !pullRequests || !issues) return null;
 
+  const devpoolRepos = getDevpoolRepos(pullRequests, issues);
+  console.log("devpoolRepos: ", devpoolRepos);
+
   const [pullRequestNotifications, issueNotifications] = await Promise.all([
-    getPullRequestNotifications(notifications, pullRequests, issues),
-    getIssueNotifications(notifications, issues),
+    getPullRequestNotifications(devpoolRepos, notifications, pullRequests, issues),
+    getIssueNotifications(devpoolRepos, notifications, issues),
   ]);
 
   if (!pullRequestNotifications && !issueNotifications) return null;
