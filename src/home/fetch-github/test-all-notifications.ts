@@ -2303,7 +2303,7 @@ export const testAllNotifications = [
       id: "12570544202",
       unread: true,
       reason: "mention",
-      updated_at: "2024-12-11T19:41:31Z",
+      updated_at: "2024-12-16T19:41:31Z",
       last_read_at: "2024-12-10T21:25:24Z",
       subject: {
         title: 'Generalized "GitHub Webhook + Contributor Role -> Rewards" No Config v1',
@@ -2522,7 +2522,7 @@ export const testAllNotifications = [
       id: "13612394339",
       unread: true,
       reason: "mention",
-      updated_at: "2024-12-11T15:57:08Z",
+      updated_at: "2024-12-14T15:57:08Z",
       last_read_at: "2024-12-10T22:54:18Z",
       subject: {
         title: "Reviewer Incentives",
