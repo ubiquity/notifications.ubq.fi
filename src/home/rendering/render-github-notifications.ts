@@ -68,7 +68,15 @@ notificationTemplate.innerHTML = `
   </div>
 `;
 
-async function everyNewNotification({ notification, notificationsContainer, providerToken }: { notification: GitHubAggregated; notificationsContainer: HTMLDivElement, providerToken: string | null }) {
+async function everyNewNotification({
+  notification,
+  notificationsContainer,
+  providerToken,
+}: {
+  notification: GitHubAggregated;
+  notificationsContainer: HTMLDivElement;
+  providerToken: string | null;
+}) {
   // clone the template
   const issueWrapper = notificationTemplate.cloneNode(true) as HTMLDivElement;
   const issueElement = issueWrapper.querySelector(".issue-element-inner") as HTMLDivElement;
@@ -84,8 +92,8 @@ async function everyNewNotification({ notification, notificationsContainer, prov
     try {
       const response = await fetch(notification.notification.subject.latest_comment_url, {
         headers: {
-          "Authorization": `Bearer ${providerToken}`
-        }
+          Authorization: `Bearer ${providerToken}`,
+        },
       });
       const data = await response.json();
       url = data.html_url;
