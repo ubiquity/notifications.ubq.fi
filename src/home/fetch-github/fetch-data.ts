@@ -3,6 +3,7 @@ import { GitHubAggregated, GitHubIssue, GitHubNotification, GitHubNotifications,
 import { getGitHubAccessToken } from "../getters/get-github-access-token";
 import { handleRateLimit } from "./handle-rate-limit";
 import { RequestError } from "@octokit/request-error";
+import { testAllNotifications } from "./test-all-notifications";
 
 export const organizationImageCache = new Map<string, Blob | null>(); // this should be declared in image related script
 
@@ -64,8 +65,7 @@ function filterIssueNotifications(notifications: GitHubNotification[]): GitHubNo
   return preFilterNotifications(notifications).filter((notification) => notification.subject.type === "Issue");
 }
 
-async function fetchIssueFromPullRequest(pullRequest: GitHubPullRequest): Promise<GitHubIssue | null> {
-  const issues = await fetchIssues();
+async function fetchIssueFromPullRequest(pullRequest: GitHubPullRequest, issues: GitHubIssue[]): Promise<GitHubIssue | null> {
   if (!pullRequest.body) return null;
 
   // Match the issue reference in the PR body
@@ -98,9 +98,8 @@ async function fetchIssueFromPullRequest(pullRequest: GitHubPullRequest): Promis
 }
 
 // Function to fetch pull request notifications with related pull request and issue data
-export async function fetchPullRequestNotifications(): Promise<GitHubAggregated[] | null> {
+export async function fetchPullRequestNotifications(pullRequests: GitHubPullRequest[], issues: GitHubIssue[]): Promise<GitHubAggregated[] | null> {
   const notifications = await fetchNotifications();
-  const pullRequests = await fetchPullRequests();
   if (!notifications) return null;
 
   const aggregatedData: GitHubAggregated[] = [];
@@ -114,7 +113,7 @@ export async function fetchPullRequestNotifications(): Promise<GitHubAggregated[
       continue; // Skip draft or closed pull requests
     }
 
-    const issue = await fetchIssueFromPullRequest(pullRequest);
+    const issue = await fetchIssueFromPullRequest(pullRequest, issues);
     if (!issue) {
       console.log("No associated issue", pullRequest);
       continue; // Skip if no associated issue
@@ -128,9 +127,8 @@ export async function fetchPullRequestNotifications(): Promise<GitHubAggregated[
 }
 
 // Function to fetch issue notifications with related issue data
-export async function fetchIssueNotifications(): Promise<GitHubAggregated[] | null> {
+export async function fetchIssueNotifications(issues: GitHubIssue[]): Promise<GitHubAggregated[] | null> {
   const notifications = await fetchNotifications();
-  const issues = await fetchIssues();
   if (!notifications) return null;
 
   const aggregatedData: GitHubAggregated[] = [];
@@ -153,14 +151,17 @@ export async function fetchIssueNotifications(): Promise<GitHubAggregated[] | nu
 
 // Fetch all notifications and return them as an array of aggregated data
 export async function fetchAllNotifications(): Promise<GitHubAggregated[] | null> {
-  const pullRequestNotifications = await fetchPullRequestNotifications();
-  const issueNotifications = await fetchIssueNotifications();
+  const pullRequests = await fetchPullRequests();
+  const issues = await fetchIssues();
+
+  const pullRequestNotifications = await fetchPullRequestNotifications(pullRequests, issues);
+  const issueNotifications = await fetchIssueNotifications(issues);
 
   if (!pullRequestNotifications && !issueNotifications) return null;
   if (!pullRequestNotifications) return issueNotifications;
   if (!issueNotifications) return pullRequestNotifications;
 
-  const allNotifications = [...pullRequestNotifications, ...issueNotifications];
+  const allNotifications = testAllNotifications;//[...pullRequestNotifications, ...issueNotifications];
   console.log("allNotifications", allNotifications);
   return allNotifications;
 }
