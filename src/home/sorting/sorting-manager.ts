@@ -1,10 +1,12 @@
 import { displayNotifications } from "../fetch-github/filter-and-display-notifications";
+import { getNotifications } from "../home";
 import { renderErrorInModal } from "../rendering/display-popup-modal";
 import { Sorting } from "./generate-sorting-buttons";
 
 export class SortingManager {
   private _lastChecked: HTMLInputElement | null = null;
   private _toolBarFilters: HTMLElement;
+  private _filterTextBox: HTMLInputElement;
   private _sortingButtons: HTMLElement;
   private _instanceId: string;
   private _sortingState: { [key: string]: "unsorted" | "ascending" | "descending" } = {}; // Track state for each sorting option
@@ -18,6 +20,8 @@ export class SortingManager {
 
     // Initialize sorting buttons first
     this._sortingButtons = this._generateSortingButtons(sortingOptions);
+    // Then initialize filter text box
+    this._filterTextBox = this._generateFilterTextBox();
 
     // Initialize sorting states to 'unsorted' for all options
     sortingOptions.forEach((option) => {
@@ -26,7 +30,90 @@ export class SortingManager {
   }
 
   public render() {
+    this._toolBarFilters.appendChild(this._filterTextBox);
     this._toolBarFilters.appendChild(this._sortingButtons);
+  }
+
+  private _generateFilterTextBox() {
+    const textBox = document.createElement("input");
+    textBox.type = "text";
+    textBox.id = `filter-${this._instanceId}`;
+    textBox.placeholder = "Search";
+
+    // Handle CTRL+F
+    document.addEventListener("keydown", (event) => {
+      if ((event.metaKey || event.ctrlKey) && event.key === "f") {
+        event.preventDefault();
+        textBox.focus();
+      }
+    });
+
+    // Get the search query from the URL (if it exists) and pre-fill the input
+    const urlParams = new URLSearchParams(window.location.search);
+    const searchQuery = urlParams.get("search") || "";
+    textBox.value = searchQuery;
+
+    const notificationsContainer = document.getElementById("issues-container") as HTMLDivElement;
+
+    function filterNotifications() {
+      try {
+        const filterText = textBox.value.toLowerCase();
+        const notifications = Array.from(notificationsContainer.children) as HTMLDivElement[];
+        notifications.forEach(async (notification) => {
+          const notificationId = notification.children[0].getAttribute("data-issue-id");
+          if (!notificationId) return;
+          notification.classList.add("active");
+          const gitHubNotifications = await getNotifications();
+          if (!gitHubNotifications) return;
+          const gitHubNotification = gitHubNotifications.find((notification) => notification.notification.id === notificationId);
+          if (!gitHubNotification) return;
+
+          const searchableProperties = ["title", "body", "number", "html_url"] as const;
+          let searchableStrings: string[] = [];
+
+          // if it's an issue notification search issue properties
+          if(gitHubNotification.notification.subject.type === "Issue"){
+            searchableStrings = searchableProperties
+              .map((prop) => gitHubNotification.issue[prop]?.toString().toLowerCase())
+              .filter((str): str is string => str !== undefined);
+          } 
+          
+          // if it's a pull request notification search pull request properties
+          else if(gitHubNotification.notification.subject.type === "PullRequest"){
+            searchableStrings = searchableProperties
+              .map((prop) => gitHubNotification.pullRequest ? gitHubNotification.pullRequest[prop]?.toString().toLowerCase() : "")
+              .filter((str): str is string => str !== undefined);
+          }
+
+          searchableStrings.push(gitHubNotification.notification.subject.title.toLowerCase());
+
+          const isVisible = searchableStrings.some((str) => str?.includes(filterText));
+          notification.style.display = isVisible ? "block" : "none";
+        });
+      } catch (error) {
+        return renderErrorInModal(error as Error);
+      }
+    }
+
+    // Observer to detect when children are added to the issues container (only once)
+    const observer = new MutationObserver(() => {
+      if (notificationsContainer.children.length > 0) {
+        observer.disconnect(); // Stop observing once children are present
+        if (searchQuery) filterNotifications(); // Filter on load if search query exists
+      }
+    });
+    observer.observe(notificationsContainer, { childList: true });
+
+    textBox.addEventListener("input", () => {
+      const filterText = textBox.value;
+      // Update the URL with the search parameter
+      const newURL = new URL(window.location.href);
+      newURL.searchParams.set("search", filterText);
+      window.history.replaceState({}, "", newURL.toString());
+      filterNotifications(); // Run the filter function immediately on input
+    });
+
+    return textBox;
   }
 
   private _generateSortingButtons(sortingOptions: readonly string[]) {
@@ -89,6 +176,12 @@ export class SortingManager {
       }
     });
 
+     // Clear search when applying a different sort
+     this._filterTextBox.value = "";
+     const newURL = new URL(window.location.href);
+     newURL.searchParams.delete("search");
+     window.history.replaceState({}, "", newURL.toString());
+     
     // Reset other buttons
     input.parentElement?.childNodes.forEach((node) => {
       if (node instanceof HTMLInputElement) {
