@@ -24,6 +24,18 @@ async function fetchNotifications(): Promise<GitHubNotifications | null> {
   return null;
 }
 
+export async function fetchIssues(): Promise<GitHubIssue[]> {
+    const response = await fetch("https://raw.githubusercontent.com/ubiquity/devpool-directory/__STORAGE__/devpool-issues.json");
+    const jsonData = await response.json();
+    return jsonData;
+  }
+
+export async function fetchPullRequests(): Promise<GitHubPullRequest[]> {
+    const response = await fetch("https://raw.githubusercontent.com/ubiquity/devpool-directory/__STORAGE__/devpool-pull-requests.json");
+    const jsonData = await response.json();
+    return jsonData;
+}
+
 // Pre-filter notifications by general rules (repo filtering and ignoring CI activity)
 function preFilterNotifications(notifications: GitHubNotification[]): GitHubNotifications {
   return notifications.filter((notification) => {
@@ -52,38 +64,8 @@ function filterIssueNotifications(notifications: GitHubNotification[]): GitHubNo
   return preFilterNotifications(notifications).filter((notification) => notification.subject.type === "Issue");
 }
 
-// Function to fetch the pull request details
-async function fetchPullRequestDetails(pullRequestUrl: string): Promise<GitHubPullRequest | null> {
-  const providerToken = await getGitHubAccessToken();
-  const octokit = new Octokit({ auth: providerToken });
-
-  try {
-    const pullRequest = (await octokit.request(`GET ${pullRequestUrl}`)).data as GitHubPullRequest;
-    return pullRequest;
-  } catch (error) {
-    console.warn("Error fetching pull request:", error);
-  }
-  return null;
-}
-
-// Function to fetch the issue details
-async function fetchIssueDetails(issueUrl: string): Promise<GitHubIssue | null> {
-  const providerToken = await getGitHubAccessToken();
-  const octokit = new Octokit({ auth: providerToken });
-
-  try {
-    const issue = (await octokit.request(`GET ${issueUrl}`)).data as GitHubIssue;
-    return issue;
-  } catch (error) {
-    console.warn("Error fetching issue:", error);
-  }
-  return null;
-}
-
 async function fetchIssueFromPullRequest(pullRequest: GitHubPullRequest): Promise<GitHubIssue | null> {
-  const providerToken = await getGitHubAccessToken();
-  const octokit = new Octokit({ auth: providerToken });
-
+  const issues = await fetchIssues();
   if (!pullRequest.body) return null;
 
   // Match the issue reference in the PR body
@@ -99,7 +81,8 @@ async function fetchIssueFromPullRequest(pullRequest: GitHubPullRequest): Promis
     apiUrl = `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}`;
   } else if (issueNumberMatch || issueMarkdownLinkMatch) {
     // Only issue number is provided, construct API URL using current repo info
-    const issueNumber = issueNumberMatch ? issueNumberMatch[1] : issueMarkdownLinkMatch![1];
+    const issueNumber = issueNumberMatch ? issueNumberMatch[1] : issueMarkdownLinkMatch ? issueMarkdownLinkMatch[1] : null;
+    if (!issueNumber) return null;
     const pullRequestUrlMatch = pullRequest.url.match(/repos\/(.+?)\/(.+?)\/pulls\/\d+/);
     if (!pullRequestUrlMatch) return null;
 
@@ -110,19 +93,14 @@ async function fetchIssueFromPullRequest(pullRequest: GitHubPullRequest): Promis
     return null;
   }
 
-  try {
-    // Fetch the issue details
-    const issue = (await octokit.request(`GET ${apiUrl}`)).data as GitHubIssue;
-    return issue;
-  } catch (error) {
-    console.warn("Error fetching issue:", error);
-    return null;
-  }
+   const issue = issues.find((issue) => issue.url === apiUrl);
+   return issue || null;
 }
 
 // Function to fetch pull request notifications with related pull request and issue data
 export async function fetchPullRequestNotifications(): Promise<GitHubAggregated[] | null> {
   const notifications = await fetchNotifications();
+  const pullRequests = await fetchPullRequests();
   if (!notifications) return null;
 
   const aggregatedData: GitHubAggregated[] = [];
@@ -130,8 +108,8 @@ export async function fetchPullRequestNotifications(): Promise<GitHubAggregated[
 
   for (const notification of filteredNotifications) {
     const pullRequestUrl = notification.subject.url;
-    const pullRequest = await fetchPullRequestDetails(pullRequestUrl);
-    if (!pullRequest /*|| pullRequest.draft || pullRequest.state === "closed"*/) {
+    const pullRequest = pullRequests.find((pr) => pr.url === pullRequestUrl);
+    if (!pullRequest  || pullRequest.draft || pullRequest.state === "closed") {
       console.log("Pull request is draft or closed", pullRequest);
       continue; // Skip draft or closed pull requests
     }
@@ -152,6 +130,7 @@ export async function fetchPullRequestNotifications(): Promise<GitHubAggregated[
 // Function to fetch issue notifications with related issue data
 export async function fetchIssueNotifications(): Promise<GitHubAggregated[] | null> {
   const notifications = await fetchNotifications();
+  const issues = await fetchIssues();
   if (!notifications) return null;
 
   const aggregatedData: GitHubAggregated[] = [];
@@ -159,8 +138,8 @@ export async function fetchIssueNotifications(): Promise<GitHubAggregated[] | nu
 
   for (const notification of filteredNotifications) {
     const issueUrl = notification.subject.url;
-    const issue = await fetchIssueDetails(issueUrl);
-    if (!issue /*|| issue.state === "closed"*/) {
+    const issue = issues.find((issue) => issue.url === issueUrl);
+    if (!issue || issue.state === "closed") {
       console.log("Issue is closed", issue);
       continue; // Skip closed issues
     }
