@@ -10,7 +10,7 @@ export function sortBy(tasks: GitHubAggregated[], sortBy: (typeof SORTING_OPTION
       return sortByPriority(tasks);
     case "backlinks":
       return sortByBacklinks(tasks);
-    case "activity":      
+    case "activity":
       return sortByActivity(tasks);
     default:
       return tasks;
