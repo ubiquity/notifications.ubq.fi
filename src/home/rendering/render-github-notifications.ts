@@ -3,6 +3,7 @@ import { GitHubAggregated } from "../github-types";
 import { renderErrorInModal } from "./display-popup-modal";
 import { getTimeAgo } from "./utils";
 import { notificationsContainer } from "../home";
+import { getGitHubAccessToken } from "../getters/get-github-access-token";
 
 export async function renderNotifications(notifications: GitHubAggregated[], skipAnimation: boolean) {
   if (notificationsContainer.classList.contains("ready")) {
@@ -16,9 +17,11 @@ export async function renderNotifications(notifications: GitHubAggregated[], ski
   let delay = 0;
   const baseDelay = 1000 / 15; // Base delay in milliseconds
 
+  const providerToken = await getGitHubAccessToken();
+
   for (const notification of notifications) {
     if (!existingNotificationIds.has(notification.notification.id.toString())) {
-      const issueWrapper = await everyNewNotification({ notification: notification, notificationsContainer });
+      const issueWrapper = await everyNewNotification({ notification: notification, notificationsContainer, providerToken: providerToken });
       if (issueWrapper) {
         if (skipAnimation) {
           issueWrapper.classList.add("active");
@@ -65,7 +68,7 @@ notificationTemplate.innerHTML = `
   </div>
 `;
 
-async function everyNewNotification({ notification, notificationsContainer }: { notification: GitHubAggregated; notificationsContainer: HTMLDivElement }) {
+async function everyNewNotification({ notification, notificationsContainer, providerToken }: { notification: GitHubAggregated; notificationsContainer: HTMLDivElement, providerToken: string | null }) {
   // clone the template
   const issueWrapper = notificationTemplate.cloneNode(true) as HTMLDivElement;
   const issueElement = issueWrapper.querySelector(".issue-element-inner") as HTMLDivElement;
@@ -79,7 +82,11 @@ async function everyNewNotification({ notification, notificationsContainer }: { 
   let url;
   if (notification.notification.subject.latest_comment_url) {
     try {
-      const response = await fetch(notification.notification.subject.latest_comment_url);
+      const response = await fetch(notification.notification.subject.latest_comment_url, {
+        headers: {
+          "Authorization": `Bearer ${providerToken}`
+        }
+      });
       const data = await response.json();
       url = data.html_url;
     } catch (error) {
