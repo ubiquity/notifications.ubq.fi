@@ -99,7 +99,7 @@ async function fetchIssueFromPullRequest(pullRequest: GitHubPullRequest, issues:
 
 // Function to fetch pull request notifications with related pull request and issue data
 export async function getPullRequestNotifications(
-  devpoolRepos: Set<string>, 
+  devpoolRepos: Set<string>,
   notifications: GitHubNotification[],
   pullRequests: GitHubPullRequest[],
   issues: GitHubIssue[]
@@ -213,18 +213,18 @@ function countBacklinks(aggregated: GitHubAggregated, allPullRequests: GitHubPul
 }
 
 function getDevpoolRepos(pullRequests: GitHubPullRequest[], issues: GitHubIssue[]): Set<string> {
-    const uniqueNames = new Set<string>();
+  const uniqueNames = new Set<string>();
 
-    for (const pullRequest of pullRequests) {
-      const [ownerName, repoName] = pullRequest.base.repo.url.split("/").slice(-2);
-      uniqueNames.add(`${ownerName}/${repoName}`);
-    }
-  
-    for (const issue of issues) {
-      const [issueOwner, issueRepo] = issue.repository_url.split("/").slice(-2);
-      uniqueNames.add(`${issueOwner}/${issueRepo}`);
-    }
-    return uniqueNames;
+  for (const pullRequest of pullRequests) {
+    const [ownerName, repoName] = pullRequest.base.repo.url.split("/").slice(-2);
+    uniqueNames.add(`${ownerName}/${repoName}`);
+  }
+
+  for (const issue of issues) {
+    const [issueOwner, issueRepo] = issue.repository_url.split("/").slice(-2);
+    uniqueNames.add(`${issueOwner}/${issueRepo}`);
+  }
+  return uniqueNames;
 }
 
 // Fetch all notifications and return them as an array of aggregated data
