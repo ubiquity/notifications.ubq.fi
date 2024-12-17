@@ -11,12 +11,9 @@ export function sortIssuesController(tasks: GitHubAggregated[], sorting?: Sortin
   if (sorting) {
     sortedNotifications = sortBy(sortedNotifications, sorting);
   } else {
-    const sortedByFreshness = sortByActivity(sortedNotifications);  // activity last
-    console.log("sortedByFreshness", sortedByFreshness);
-    const sortedByBacklinks = sortByBacklinks(sortedByFreshness);   // backlinks second
-    console.log("sortedByBacklinks", sortedByBacklinks);
-    const sortedByPriority = sortByPriority(sortedByBacklinks);     // highest priority first
-    console.log("sortedByPriority", sortedByPriority);
+    const sortedByFreshness = sortByActivity(sortedNotifications); // activity last
+    const sortedByBacklinks = sortByBacklinks(sortedByFreshness); // backlinks second
+    const sortedByPriority = sortByPriority(sortedByBacklinks); // highest priority first
     sortedNotifications = sortedByPriority;
   }
 
