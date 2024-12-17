@@ -55,9 +55,21 @@ export function renderEmpty() {
   notificationsContainer.classList.add("ready");
 }
 
+// this is used for cloning to speed up in loop
+const notificationTemplate = document.createElement("div");
+notificationTemplate.innerHTML = `
+  <div class="issue-element-inner">
+    <div class="content">
+      <!-- dynamic content will be inserted here -->
+    </div>
+  </div>
+`;
+
 async function everyNewNotification({ notification, notificationsContainer }: { notification: GitHubAggregated; notificationsContainer: HTMLDivElement }) {
-  const issueWrapper = document.createElement("div");
-  const issueElement = document.createElement("div");
+    // clone the template
+    const issueWrapper = notificationTemplate.cloneNode(true) as HTMLDivElement;
+    const issueElement = issueWrapper.querySelector(".issue-element-inner") as HTMLDivElement;
+  
   issueElement.setAttribute("data-issue-id", notification.notification.id.toString());
   issueElement.classList.add("issue-element-inner");
 
