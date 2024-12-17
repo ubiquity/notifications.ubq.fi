@@ -66,10 +66,10 @@ notificationTemplate.innerHTML = `
 `;
 
 async function everyNewNotification({ notification, notificationsContainer }: { notification: GitHubAggregated; notificationsContainer: HTMLDivElement }) {
-    // clone the template
-    const issueWrapper = notificationTemplate.cloneNode(true) as HTMLDivElement;
-    const issueElement = issueWrapper.querySelector(".issue-element-inner") as HTMLDivElement;
-  
+  // clone the template
+  const issueWrapper = notificationTemplate.cloneNode(true) as HTMLDivElement;
+  const issueElement = issueWrapper.querySelector(".issue-element-inner") as HTMLDivElement;
+
   issueElement.setAttribute("data-issue-id", notification.notification.id.toString());
   issueElement.classList.add("issue-element-inner");
 
