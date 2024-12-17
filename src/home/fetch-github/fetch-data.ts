@@ -3,7 +3,7 @@ import { GitHubAggregated, GitHubIssue, GitHubNotification, GitHubNotifications,
 import { getGitHubAccessToken } from "../getters/get-github-access-token";
 import { handleRateLimit } from "./handle-rate-limit";
 import { RequestError } from "@octokit/request-error";
-import { testAllNotifications } from "./test-all-notifications";
+// import { testAllNotifications } from "./test-all-notifications";
 
 export const organizationImageCache = new Map<string, Blob | null>(); // this should be declared in image related script
 
@@ -119,7 +119,7 @@ export async function fetchPullRequestNotifications(pullRequests: GitHubPullRequ
       continue; // Skip if no associated issue
     }
 
-    aggregatedData.push({ notification, pullRequest, issue });
+    aggregatedData.push({ notification, pullRequest, issue, backlinkCount: 0 });
   }
 
   console.log("pullRequestNotifications", aggregatedData);
@@ -142,12 +142,76 @@ export async function fetchIssueNotifications(issues: GitHubIssue[]): Promise<Gi
       continue; // Skip closed issues
     }
 
-    aggregatedData.push({ notification, pullRequest: null, issue });
+    aggregatedData.push({ notification, pullRequest: null, issue, backlinkCount: 0 });
   }
 
   console.log("issueNotifications", aggregatedData);
   return aggregatedData;
 }
+
+function countBacklinks(
+    aggregated: GitHubAggregated,
+    allPullRequests: GitHubPullRequest[],
+    allIssues: GitHubIssue[]
+  ): number {
+    let issueNumber: number | null = null;
+    let issueUrl: string | null = null;
+    let prUrl: string | null = null;
+    let repoName: string, ownerName: string;
+  
+    // extract URLs and numbers based on the notification type
+    if (aggregated.notification.subject.type === "Issue" && aggregated.issue) {
+      const { number, url, repository_url } = aggregated.issue;
+      issueNumber = number;
+      issueUrl = url;
+      [ownerName, repoName] = repository_url.split("/").slice(-2);
+    } else if (aggregated.notification.subject.type === "PullRequest" && aggregated.pullRequest) {
+      const { url, base } = aggregated.pullRequest;
+      prUrl = url;
+      issueNumber = aggregated.issue?.number || null;
+      issueUrl = aggregated.issue?.url || null;
+      [ownerName, repoName] = base.repo.url.split("/").slice(-2);
+    } else {
+      return 0; // unsupported type
+    }
+  
+    if (!prUrl && !issueUrl) return 0; // safety check
+  
+    // regex patterns
+    const issueFullUrlRegex = issueUrl ? new RegExp(issueUrl, "g") : null;
+    const prFullUrlRegex = prUrl ? new RegExp(prUrl, "g") : null;
+    const issueShortRefRegex = issueNumber ? new RegExp(`#${issueNumber}\\b`, "g") : null;
+  
+    // check backlinks in a body
+    const countMatches = (body: string | null, repo: string, owner: string): number => {
+      let count = 0;
+      if (!body) return count;
+  
+      if (prFullUrlRegex && body.match(prFullUrlRegex)) count++; // full PR URL match
+      if (issueFullUrlRegex && body.match(issueFullUrlRegex)) count++; // full Issue URL match
+      if (issueShortRefRegex && body.match(issueShortRefRegex) && repo === repoName && owner === ownerName) {
+        count++; // short issue reference match (same repo)
+      }
+  
+      return count;
+    };
+  
+    let totalCount = 0;
+  
+    // check backlinks in pull requests
+    for (const pr of allPullRequests) {
+      const [prOwner, prRepo] = pr.base.repo.url.split("/").slice(-2);
+      totalCount += countMatches(pr.body, prRepo, prOwner);
+    }
+  
+    // check backlinks in issues
+    for (const issue of allIssues) {
+      const [issueOwner, issueRepo] = issue.repository_url.split("/").slice(-2);
+      totalCount += countMatches(issue.body ?? null, issueRepo, issueOwner);
+    }
+  
+    return totalCount;
+}  
 
 // Fetch all notifications and return them as an array of aggregated data
 export async function fetchAllNotifications(): Promise<GitHubAggregated[] | null> {
@@ -161,7 +225,14 @@ export async function fetchAllNotifications(): Promise<GitHubAggregated[] | null
   if (!pullRequestNotifications) return issueNotifications;
   if (!issueNotifications) return pullRequestNotifications;
 
-  const allNotifications = testAllNotifications; //[...pullRequestNotifications, ...issueNotifications];
+  const allNotifications = [...pullRequestNotifications, ...issueNotifications]; //testAllNotifications; for testing
+
+  // add backlink counts to each notification
+  for (const aggregated of allNotifications) {
+    const backlinkCount = countBacklinks(aggregated, pullRequests, issues);
+    aggregated.backlinkCount = backlinkCount;
+  }
+
   console.log("allNotifications", allNotifications);
   return allNotifications;
 }

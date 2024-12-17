@@ -22,6 +22,7 @@ export type GitHubAggregated = {
   issue: GitHubIssue;
   pullRequest: GitHubPullRequest | null;
   notification: GitHubNotification;
+  backlinkCount: number;
 };
 export type GitHubLabel =
   | {
