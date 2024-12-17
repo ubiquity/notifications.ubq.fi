@@ -99,7 +99,11 @@ async function fetchIssueFromPullRequest(pullRequest: GitHubPullRequest, issues:
 }
 
 // Function to fetch pull request notifications with related pull request and issue data
-export async function fetchPullRequestNotifications(notifications: GitHubNotification[], pullRequests: GitHubPullRequest[], issues: GitHubIssue[]): Promise<GitHubAggregated[] | null> {
+export async function fetchPullRequestNotifications(
+  notifications: GitHubNotification[],
+  pullRequests: GitHubPullRequest[],
+  issues: GitHubIssue[]
+): Promise<GitHubAggregated[] | null> {
   if (!notifications) return null;
 
   const aggregatedData: GitHubAggregated[] = [];
@@ -214,7 +218,7 @@ export async function fetchAllNotifications(): Promise<GitHubAggregated[] | null
   const pullRequests = await fetchPullRequests();
   const issues = await fetchIssues();
 
-  if(!notifications || !pullRequests || !issues) return null;
+  if (!notifications || !pullRequests || !issues) return null;
 
   const pullRequestNotifications = await fetchPullRequestNotifications(notifications, pullRequests, issues);
   const issueNotifications = await fetchIssueNotifications(notifications, issues);
