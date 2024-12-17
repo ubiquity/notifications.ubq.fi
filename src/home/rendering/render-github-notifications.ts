@@ -106,6 +106,7 @@ function setUpIssueElement(issueElement: HTMLDivElement, notification: GitHubAgg
         </div>
       </div>
     </div>
+    <div class="latest-comment-preview"></div>
     <div class="labels">
       ${labels.join("")}
       ${image}
@@ -175,6 +176,8 @@ async function updateLatestCommentUrls(notificationsToUpdate: { element: HTMLEle
   const fetchPromises = notificationsToUpdate.map(async ({ element, notification }) => {
     const { subject } = notification.notification;
     let url = "";
+    let avatarUrl = "";
+    let commentBody = "";
 
     if (subject.latest_comment_url) {
       try {
@@ -182,7 +185,17 @@ async function updateLatestCommentUrls(notificationsToUpdate: { element: HTMLEle
           headers: { Authorization: `Bearer ${providerToken}` },
         });
         const data = await response.json();
+        console.log("data", data);
         url = data.html_url;
+        avatarUrl = data.user.avatar_url; // get the comment author's avatar
+        commentBody = data.body; // get the comment body text
+
+        // check if commentBody contains HTML
+        const parser = new DOMParser();
+        const parsedDoc = parser.parseFromString(commentBody, "text/html");
+        if (parsedDoc.body.children.length > 0) {
+          commentBody = "This comment is in HTML format.";
+        }
       } catch (error) {
         console.error("Failed to fetch latest comment URL:", error);
       }
@@ -194,6 +207,16 @@ async function updateLatestCommentUrls(notificationsToUpdate: { element: HTMLEle
 
     // update the rendered element with the real URL
     const issueElement = element.querySelector(".issue-element-inner");
+    const previewElement = issueElement?.querySelector(".latest-comment-preview");
+    
+    if (previewElement) {
+      previewElement.innerHTML = `
+        <div class="comment-preview">
+          <img src="${avatarUrl ? avatarUrl : ""}" class="comment-avatar"/>
+          <span class="comment-body">${commentBody ? commentBody : "No comment available."}</span>
+        </div>
+      `;
+    }
     if (issueElement) {
       issueElement.addEventListener("click", () => window.open(url, "_blank"));
     }

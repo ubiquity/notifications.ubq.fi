@@ -296,6 +296,26 @@
     padding: 6px 0px 8px 0px;
     gap: 4px;
   }
+  .latest-comment-preview {
+    padding: 8px 0px;
+  }
+
+  .comment-preview {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    width: 95%;
+  }
+
+  .comment-body {
+    align-items: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+    color: #acacac;
+    font-size: 14px;
+  }
+
   body {
     display: flex;
     align-items: center;
