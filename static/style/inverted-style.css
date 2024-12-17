@@ -441,7 +441,7 @@
       display: none;
     }
   }
-  @media screen and (max-width: 1361px) {
+  @media screen and (max-width: 3000px) {
     .partner {
       margin-top: 0;
     }
