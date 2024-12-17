@@ -225,10 +225,7 @@ export async function fetchAllNotifications(): Promise<GitHubAggregated[] | null
 
   if (!pullRequestNotifications && !issueNotifications) return null;
 
-  const allNotifications = [
-    ...(pullRequestNotifications || []),
-    ...(issueNotifications || [])
-  ];
+  const allNotifications = [...(pullRequestNotifications || []), ...(issueNotifications || [])];
 
   // add backlink counts to each notification
   for (const aggregated of allNotifications) {
