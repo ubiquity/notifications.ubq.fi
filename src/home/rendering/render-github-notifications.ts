@@ -208,7 +208,7 @@ async function updateLatestCommentUrls(notificationsToUpdate: { element: HTMLEle
     // update the rendered element with the real URL
     const issueElement = element.querySelector(".issue-element-inner");
     const previewElement = issueElement?.querySelector(".latest-comment-preview");
-    
+
     if (previewElement) {
       previewElement.innerHTML = `
         <div class="comment-preview">
