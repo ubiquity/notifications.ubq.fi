@@ -25,15 +25,15 @@ async function fetchNotifications(): Promise<GitHubNotifications | null> {
 }
 
 export async function fetchIssues(): Promise<GitHubIssue[]> {
-    const response = await fetch("https://raw.githubusercontent.com/ubiquity/devpool-directory/__STORAGE__/devpool-issues.json");
-    const jsonData = await response.json();
-    return jsonData;
-  }
+  const response = await fetch("https://raw.githubusercontent.com/ubiquity/devpool-directory/__STORAGE__/devpool-issues.json");
+  const jsonData = await response.json();
+  return jsonData;
+}
 
 export async function fetchPullRequests(): Promise<GitHubPullRequest[]> {
-    const response = await fetch("https://raw.githubusercontent.com/ubiquity/devpool-directory/__STORAGE__/devpool-pull-requests.json");
-    const jsonData = await response.json();
-    return jsonData;
+  const response = await fetch("https://raw.githubusercontent.com/ubiquity/devpool-directory/__STORAGE__/devpool-pull-requests.json");
+  const jsonData = await response.json();
+  return jsonData;
 }
 
 // Pre-filter notifications by general rules (repo filtering and ignoring CI activity)
@@ -93,8 +93,8 @@ async function fetchIssueFromPullRequest(pullRequest: GitHubPullRequest): Promis
     return null;
   }
 
-   const issue = issues.find((issue) => issue.url === apiUrl);
-   return issue || null;
+  const issue = issues.find((issue) => issue.url === apiUrl);
+  return issue || null;
 }
 
 // Function to fetch pull request notifications with related pull request and issue data
@@ -109,7 +109,7 @@ export async function fetchPullRequestNotifications(): Promise<GitHubAggregated[
   for (const notification of filteredNotifications) {
     const pullRequestUrl = notification.subject.url;
     const pullRequest = pullRequests.find((pr) => pr.url === pullRequestUrl);
-    if (!pullRequest  || pullRequest.draft || pullRequest.state === "closed") {
+    if (!pullRequest || pullRequest.draft || pullRequest.state === "closed") {
       console.log("Pull request is draft or closed", pullRequest);
       continue; // Skip draft or closed pull requests
     }
