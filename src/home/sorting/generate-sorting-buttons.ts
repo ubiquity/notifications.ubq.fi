@@ -1,6 +1,6 @@
 import { SortingManager } from "./sorting-manager";
 
-export const SORTING_OPTIONS = ["priority", "activity"] as const;
+export const SORTING_OPTIONS = ["priority", "backlinks", "activity"] as const;
 export type Sorting = (typeof SORTING_OPTIONS)[number];
 
 export function generateSortingToolbar() {
