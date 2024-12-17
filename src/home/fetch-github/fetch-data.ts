@@ -161,7 +161,7 @@ export async function fetchAllNotifications(): Promise<GitHubAggregated[] | null
   if (!pullRequestNotifications) return issueNotifications;
   if (!issueNotifications) return pullRequestNotifications;
 
-  const allNotifications = testAllNotifications;//[...pullRequestNotifications, ...issueNotifications];
+  const allNotifications = testAllNotifications; //[...pullRequestNotifications, ...issueNotifications];
   console.log("allNotifications", allNotifications);
   return allNotifications;
 }
