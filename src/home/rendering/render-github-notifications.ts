@@ -69,13 +69,7 @@ notificationTemplate.innerHTML = `
   </div>
 `;
 
-function everyNewNotification({
-  notification,
-  notificationsContainer
-}: {
-  notification: GitHubAggregated;
-  notificationsContainer: HTMLDivElement;
-}) {
+function everyNewNotification({ notification, notificationsContainer }: { notification: GitHubAggregated; notificationsContainer: HTMLDivElement }) {
   // clone the template
   const issueWrapper = notificationTemplate.cloneNode(true) as HTMLDivElement;
   const issueElement = issueWrapper.querySelector(".issue-element-inner") as HTMLDivElement;
@@ -93,13 +87,7 @@ function everyNewNotification({
   return issueWrapper;
 }
 
-function setUpIssueElement(
-  issueElement: HTMLDivElement,
-  notification: GitHubAggregated,
-  organizationName: string,
-  repositoryName: string,
-  labels: string[]
-) {
+function setUpIssueElement(issueElement: HTMLDivElement, notification: GitHubAggregated, organizationName: string, repositoryName: string, labels: string[]) {
   const image = `<img />`;
 
   issueElement.innerHTML = `
@@ -179,9 +167,7 @@ function parseAndGenerateLabels(notification: GitHubAggregated) {
 }
 
 // fetches latest comment from each notification and add click event to open the comment
-async function updateLatestCommentUrls(
-  notificationsToUpdate: { element: HTMLElement; notification: GitHubAggregated }[]
-) {
+async function updateLatestCommentUrls(notificationsToUpdate: { element: HTMLElement; notification: GitHubAggregated }[]) {
   const providerToken = await getGitHubAccessToken();
   const fetchPromises = notificationsToUpdate.map(async ({ element, notification }) => {
     const { subject } = notification.notification;

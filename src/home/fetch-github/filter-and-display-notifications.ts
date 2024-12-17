@@ -71,8 +71,7 @@ viewToggle.addEventListener("click", () => {
 // }
 
 // checks the cache's integrity, sorts issues, checks Directory/Proposals toggle, renders them and applies avatars
-export async function displayNotifications(
-  {
+export async function displayNotifications({
   sorting,
   options = { ordering: "normal" },
   skipAnimation = false,
@@ -82,7 +81,7 @@ export async function displayNotifications(
   skipAnimation?: boolean;
 } = {}) {
   const notifications = await getNotifications();
-  if(notifications === null || notifications.length === 0){
+  if (notifications === null || notifications.length === 0) {
     renderEmpty();
     return;
   }
