@@ -176,6 +176,7 @@ async function updateLatestCommentUrls(notificationsToUpdate: { element: HTMLEle
   const fetchPromises = notificationsToUpdate.map(async ({ element, notification }) => {
     const { subject } = notification.notification;
     let url = "";
+    let userType = "";
     let avatarUrl = "";
     let commentBody = "";
 
@@ -187,8 +188,13 @@ async function updateLatestCommentUrls(notificationsToUpdate: { element: HTMLEle
         const data = await response.json();
         console.log("data", data);
         url = data.html_url;
+        userType = data.user.type;
         avatarUrl = data.user.avatar_url; // get the comment author's avatar
         commentBody = data.body; // get the comment body text
+
+        if(userType === "Bot") {
+          element.style.display = "none";
+        }
 
         // check if commentBody contains HTML
         const parser = new DOMParser();
