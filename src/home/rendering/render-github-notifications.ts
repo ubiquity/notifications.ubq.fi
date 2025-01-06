@@ -3,6 +3,7 @@ import { GitHubAggregated } from "../github-types";
 import { getTimeAgo } from "./utils";
 import { notificationsContainer } from "../home";
 import { getGitHubAccessToken } from "../getters/get-github-access-token";
+import { Octokit } from "@octokit/rest";
 
 export function renderNotifications(notifications: GitHubAggregated[], skipAnimation: boolean) {
   if (notificationsContainer.classList.contains("ready")) {
@@ -173,6 +174,8 @@ function parseAndGenerateLabels(notification: GitHubAggregated) {
 // fetches latest comment from each notification and add click event to open the comment
 async function updateLatestCommentUrls(notificationsToUpdate: { element: HTMLElement; notification: GitHubAggregated }[]) {
   const providerToken = await getGitHubAccessToken();
+  const octokit = new Octokit({ auth: providerToken });
+  
   const fetchPromises = notificationsToUpdate.map(async ({ element, notification }) => {
     const { subject } = notification.notification;
     let url = "";
@@ -224,7 +227,15 @@ async function updateLatestCommentUrls(notificationsToUpdate: { element: HTMLEle
       `;
     }
     if (issueElement) {
-      issueElement.addEventListener("click", () => window.open(url, "_blank"));
+      issueElement.addEventListener("click", () => {
+        window.open(url, "_blank");
+        void octokit.request('PATCH /notifications/threads/{thread_id}', {
+          thread_id: Number(notification.notification.id),
+          headers: {
+            'X-GitHub-Api-Version': '2022-11-28'
+          }
+        })
+      });
     }
   });
 
