@@ -228,13 +228,13 @@ async function updateLatestCommentUrls(notificationsToUpdate: { element: HTMLEle
 // Listen for changes in view toggle and update the URL accordingly
 export const proposalViewToggle = document.getElementById("view-toggle") as HTMLInputElement;
 proposalViewToggle.addEventListener("change", () => {
-  const newURL = new URL(window.location.href);
-  if (proposalViewToggle.checked) {
-    newURL.searchParams.set("proposal", "true");
-  } else {
-    newURL.searchParams.delete("proposal");
-  }
-  window.history.replaceState({}, "", newURL.toString());
+  // const newURL = new URL(window.location.href);
+  // if (proposalViewToggle.checked) {
+  //   newURL.searchParams.set("proposal", "true");
+  // } else {
+  //   newURL.searchParams.delete("proposal");
+  // }
+  // window.history.replaceState({}, "", newURL.toString());
 });
 
 export function applyAvatarsToNotifications() {

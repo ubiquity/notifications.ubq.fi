@@ -814,11 +814,11 @@
     background-color: grey;
   }
   #view-toggle:checked::after {
-    content: "Proposals";
+    content: "";
     cursor: pointer;
   }
   #view-toggle::after {
-    content: "Directory";
+    content: "";
     letter-spacing: 1.5px;
     text-rendering: geometricprecision;
     text-transform: uppercase;
