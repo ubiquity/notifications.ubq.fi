@@ -229,7 +229,7 @@ async function updateLatestCommentUrls(notificationsToUpdate: { element: HTMLEle
     if (issueElement) {
       issueElement.addEventListener("click", () => {
         window.open(url, "_blank");
-        void octokit.request('PATCH /notifications/threads/{thread_id}', {
+        void octokit.request('DELETE /notifications/threads/{thread_id}', {
           thread_id: Number(notification.notification.id),
           headers: {
             'X-GitHub-Api-Version': '2022-11-28'
