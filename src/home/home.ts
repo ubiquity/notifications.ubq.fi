@@ -30,6 +30,12 @@ if (!notificationsContainer) {
   throw new Error("Could not find issues container");
 }
 
+// Should show bot
+export let showBotNotifications = false;
+export const flipShowBotNotifications = () => {
+  showBotNotifications = !showBotNotifications;
+}
+
 // Store notifications
 let notifications: Awaited<ReturnType<typeof fetchAllNotifications>> | undefined;
 

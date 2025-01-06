@@ -1,5 +1,5 @@
 import { displayNotifications } from "../fetch-github/filter-and-display-notifications";
-import { getNotifications } from "../home";
+import { flipShowBotNotifications, getNotifications, showBotNotifications } from "../home";
 import { renderErrorInModal } from "../rendering/display-popup-modal";
 import { Sorting } from "./generate-sorting-buttons";
 
@@ -119,6 +119,27 @@ export class SortingManager {
   private _generateSortingButtons(sortingOptions: readonly string[]) {
     const buttons = document.createElement("div");
     buttons.className = "labels";
+
+    const input = document.createElement("input");
+    input.style.display = "none";
+    input.type = "button";
+    input.id = `filter-bot-${this._instanceId}`;
+    const label = document.createElement("label");
+    label.htmlFor = `filter-bot-${this._instanceId}`;
+    label.textContent = showBotNotifications ? "Hide Bot" : "Show Bot";
+
+    input.addEventListener("click", () => {
+      flipShowBotNotifications();
+      label.textContent = showBotNotifications ? "Hide Bot" : "Show Bot";
+      try {
+        void displayNotifications();
+      } catch (error) {
+        renderErrorInModal(error as Error);
+      }
+    });
+
+    buttons.appendChild(input);
+    buttons.appendChild(label);
 
     sortingOptions.forEach((option) => {
       const input = this._createRadioButton(option);
