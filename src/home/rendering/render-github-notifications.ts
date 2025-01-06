@@ -227,14 +227,18 @@ async function updateLatestCommentUrls(notificationsToUpdate: { element: HTMLEle
       `;
     }
     if (issueElement) {
-      issueElement.addEventListener("click", () => {
+      issueElement.addEventListener("click", async() => {
         window.open(url, "_blank");
-        void octokit.request('DELETE /notifications/threads/{thread_id}', {
-          thread_id: Number(notification.notification.id),
-          headers: {
-            'X-GitHub-Api-Version': '2022-11-28'
-          }
-        })
+        try{
+          await octokit.request('DELETE /notifications/threads/{thread_id}', {
+            thread_id: Number(notification.notification.id),
+            headers: {
+              'X-GitHub-Api-Version': '2022-11-28'
+            }
+          })
+        } catch (error){
+          console.error("Failed to delete notification:", error);
+        }
       });
     }
   });
