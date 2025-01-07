@@ -296,9 +296,6 @@
     padding: 6px 0px 8px 0px;
     gap: 4px;
   }
-  .latest-comment-preview {
-    padding: 8px 0px;
-  }
 
   .comment-preview {
     display: flex;

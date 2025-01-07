@@ -218,14 +218,19 @@ async function updateLatestCommentUrls(notificationsToUpdate: { element: HTMLEle
     const issueElement = element.querySelector(".issue-element-inner");
     const previewElement = issueElement?.querySelector(".latest-comment-preview");
 
-    if (previewElement) {
-      previewElement.innerHTML = `
-        <div class="comment-preview">
-          <img src="${avatarUrl ? avatarUrl : ""}" class="comment-avatar"/>
-          <span class="comment-body">${commentBody ? commentBody : "No comment available."}</span>
-        </div>
-      `;
+    if(previewElement){
+      const commentPreviewDiv = document.createElement("div");
+      commentPreviewDiv.classList.add("comment-preview");
+      if (commentBody) {
+        commentPreviewDiv.innerHTML = `
+          <img src="${avatarUrl ? avatarUrl: ""}" class="comment-avatar"/>
+          <span class="comment-body">${commentBody}</span>
+        `;
+        commentPreviewDiv.style.padding = "8px 0px";
+      }
+      previewElement.append(commentPreviewDiv);
     }
+
     if (issueElement) {
       issueElement.addEventListener("click", async() => {
         window.open(url, "_blank");
