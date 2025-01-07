@@ -189,7 +189,6 @@ async function updateLatestCommentUrls(notificationsToUpdate: { element: HTMLEle
           headers: { Authorization: `Bearer ${providerToken}` },
         });
         const data = await response.json();
-        console.log("data", data);
         url = data.html_url;
         userType = data.user.type;
         avatarUrl = data.user.avatar_url; // get the comment author's avatar
