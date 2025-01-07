@@ -1,7 +1,7 @@
 import { organizationImageCache } from "../fetch-github/fetch-data";
 import { GitHubAggregated } from "../github-types";
 import { getTimeAgo } from "./utils";
-import { notificationsContainer } from "../home";
+import { notificationsContainer, showBotNotifications } from "../home";
 import { getGitHubAccessToken } from "../getters/get-github-access-token";
 import { Octokit } from "@octokit/rest";
 
@@ -194,7 +194,7 @@ async function updateLatestCommentUrls(notificationsToUpdate: { element: HTMLEle
         avatarUrl = data.user.avatar_url; // get the comment author's avatar
         commentBody = data.body; // get the comment body text
 
-        if(userType === "Bot") {
+        if(userType === "Bot" && !showBotNotifications) {
           element.style.display = "none";
         }
 
