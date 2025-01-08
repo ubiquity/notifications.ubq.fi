@@ -5,7 +5,9 @@ import { notificationsContainer, showBotNotifications } from "../home";
 import { getGitHubAccessToken } from "../getters/get-github-access-token";
 import { Octokit } from "@octokit/rest";
 
-export function renderNotifications(notifications: GitHubAggregated[], skipAnimation: boolean) {
+export async function renderNotifications(notifications: GitHubAggregated[], skipAnimation: boolean) {
+  const providerToken = await getGitHubAccessToken();
+
   if (notificationsContainer.classList.contains("ready")) {
     notificationsContainer.classList.remove("ready");
     notificationsContainer.innerHTML = "";
@@ -17,11 +19,13 @@ export function renderNotifications(notifications: GitHubAggregated[], skipAnima
   let delay = 0;
   const baseDelay = 1000 / 15; // Base delay in milliseconds
 
-  const notificationsToUpdate: { element: HTMLElement; notification: GitHubAggregated }[] = [];
+  // Fetch all latest comments before rendering notifications
+  const commentsMap = await fetchLatestComments(notifications);
 
   for (const notification of notifications) {
     if (!existingNotificationIds.has(notification.notification.id.toString())) {
-      const issueWrapper = everyNewNotification({ notification: notification, notificationsContainer });
+      const issueWrapper = everyNewNotification({ notification, notificationsContainer, commentsMap, providerToken});
+
       if (issueWrapper) {
         if (skipAnimation) {
           issueWrapper.classList.add("active");
@@ -29,8 +33,6 @@ export function renderNotifications(notifications: GitHubAggregated[], skipAnima
           setTimeout(() => issueWrapper.classList.add("active"), delay);
           delay += baseDelay;
         }
-
-        notificationsToUpdate.push({ element: issueWrapper, notification });
       }
     }
   }
@@ -38,9 +40,8 @@ export function renderNotifications(notifications: GitHubAggregated[], skipAnima
 
   // Scroll to the top of the page
   window.scrollTo({ top: 0 });
-
-  void updateLatestCommentUrls(notificationsToUpdate);
 }
+
 export function renderEmpty() {
   if (notificationsContainer.classList.contains("ready")) {
     notificationsContainer.classList.remove("ready");
@@ -70,8 +71,17 @@ notificationTemplate.innerHTML = `
   </div>
 `;
 
-function everyNewNotification({ notification, notificationsContainer }: { notification: GitHubAggregated; notificationsContainer: HTMLDivElement }) {
-  // clone the template
+function everyNewNotification({
+  notification,
+  notificationsContainer,
+  commentsMap,
+  providerToken
+}: {
+  notification: GitHubAggregated;
+  notificationsContainer: HTMLDivElement;
+  commentsMap: Map<string, { userType: string, url: string; avatarUrl: string; commentBody: string }>;
+  providerToken: string | null;
+}) {
   const issueWrapper = notificationTemplate.cloneNode(true) as HTMLDivElement;
   const issueElement = issueWrapper.querySelector(".issue-element-inner") as HTMLDivElement;
 
@@ -81,15 +91,31 @@ function everyNewNotification({ notification, notificationsContainer }: { notifi
   const labels = parseAndGenerateLabels(notification);
   const [organizationName, repositoryName] = notification.notification.repository.url.split("/").slice(-2);
 
-  setUpIssueElement(issueElement, notification, organizationName, repositoryName, labels);
-  issueWrapper.appendChild(issueElement);
+  const commentData = commentsMap.get(notification.notification.id.toString());
 
+  if ((!commentData || commentData.commentBody === "") || (commentData.userType === "Bot" && !showBotNotifications)) return;
+
+  setUpIssueElement(providerToken, issueElement, notification, organizationName, repositoryName, labels, commentData);
+  issueWrapper.appendChild(issueElement);
   notificationsContainer.appendChild(issueWrapper);
   return issueWrapper;
 }
 
-function setUpIssueElement(issueElement: HTMLDivElement, notification: GitHubAggregated, organizationName: string, repositoryName: string, labels: string[]) {
-  const image = `<img />`;
+function setUpIssueElement(
+  providerToken: string | null,
+  issueElement: HTMLDivElement,
+  notification: GitHubAggregated,
+  organizationName: string,
+  repositoryName: string,
+  labels: string[],
+  commentData: { userType: string, url: string; avatarUrl: string; commentBody: string }
+) {
+  if(commentData.userType === "Bot" && !showBotNotifications) {
+    issueElement.style.display = "none";
+  }
+
+  const octokit = new Octokit({ auth: providerToken });
+  const image = `<img class="orgAvatar"/>`;
 
   issueElement.innerHTML = `
     <div class="info">
@@ -107,13 +133,18 @@ function setUpIssueElement(issueElement: HTMLDivElement, notification: GitHubAgg
         </div>
       </div>
     </div>
-    <div class="latest-comment-preview"></div>
+    <div class="latest-comment-preview">
+        <div class="comment-preview">
+          <img src="${commentData.avatarUrl}" class="comment-avatar"/>
+          <span class="comment-body">${commentData.commentBody}</span>
+        </div>
+    </div>
     <div class="labels">
       ${labels.join("")}
       ${image}
     </div>`;
 
-  const notificationIcon = issueElement.querySelector(".notification-icon");
+    const notificationIcon = issueElement.querySelector(".notification-icon");
 
   if (notification.notification.subject.type === "Issue" && notificationIcon) {
     notificationIcon.innerHTML = `
@@ -129,40 +160,94 @@ function setUpIssueElement(issueElement: HTMLDivElement, notification: GitHubAgg
         </svg>
       `;
   }
+
+    issueElement.addEventListener("click", async() => {
+      window.open(commentData.url, "_blank");
+      try{
+        await octokit.request('PATCH /notifications/threads/{thread_id}', {
+          thread_id: Number(notification.notification.id),
+          headers: {
+            'X-GitHub-Api-Version': '2022-11-28'
+          }
+        })
+        await octokit.request('DELETE /notifications/threads/{thread_id}', {
+          thread_id: Number(notification.notification.id),
+          headers: {
+            'X-GitHub-Api-Version': '2022-11-28'
+          }
+        })
+      } catch (error){
+        console.error("Failed to delete notification:", error);
+      }
+    });
+}
+
+async function fetchLatestComments(notifications: GitHubAggregated[]) {
+  const providerToken = await getGitHubAccessToken();
+  const commentsMap = new Map<string, { userType: string, url: string; avatarUrl: string; commentBody: string }>();
+
+  await Promise.all(
+    notifications.map(async (notification) => {
+      const { subject } = notification.notification;
+      let userType = "";
+      let url = "";
+      let avatarUrl = "";
+      let commentBody = "";
+
+      if (subject.latest_comment_url) {
+        try {
+          const response = await fetch(subject.latest_comment_url, {
+            headers: { Authorization: `Bearer ${providerToken}` }
+          });
+          const data = await response.json();
+          userType = data.user.type;
+          url = data.html_url;
+          avatarUrl = data.user.avatar_url;
+          commentBody = data.body;
+
+          // Check if commentBody contains HTML
+          const parser = new DOMParser();
+          const parsedDoc = parser.parseFromString(commentBody, "text/html");
+          if (parsedDoc.body.children.length > 0) {
+            commentBody = "This comment is in HTML format.";
+          }
+        } catch (error) {
+          console.error("Failed to fetch latest comment URL:", error);
+        }
+      }
+
+      if (!url) {
+        url = notification.issue?.html_url || notification.pullRequest?.html_url || "#";
+      }
+
+      commentsMap.set(notification.notification.id.toString(), { userType, url, avatarUrl, commentBody });
+    })
+  );
+
+  return commentsMap;
 }
 
 function parseAndGenerateLabels(notification: GitHubAggregated) {
   const labels: string[] = [];
 
-  // Add priority label
   if (notification.issue.labels) {
     notification.issue.labels.forEach((label) => {
-      // check if label is a single string
-      if (typeof label === "string") {
-        return;
-      }
-
-      // check if label.name exists
-      if (!label.name) {
-        return;
-      }
+      if (typeof label === "string") return;
+      if (!label.name) return;
 
       const match = label.name.match(/^(Priority): /);
       if (match) {
         const name = label.name.replace(match[0], "");
-        const labelStr = `<label class="priority">${name}</label>`;
-        labels.push(labelStr);
+        labels.push(`<label class="priority">${name}</label>`);
       }
     });
   }
 
-  // Add reason label
   if (notification.notification.reason) {
     const reason = notification.notification.reason.replace(/_/g, " ");
     labels.push(`<label class="reason">${reason}</label>`);
   }
 
-  // Add timestamp label
   if (notification.notification.updated_at) {
     const timeAgo = getTimeAgo(new Date(notification.notification.updated_at));
     labels.push(`<label class="timestamp">${timeAgo}</label>`);
@@ -170,108 +255,6 @@ function parseAndGenerateLabels(notification: GitHubAggregated) {
 
   return labels;
 }
-
-// fetches latest comment from each notification and add click event to open the comment
-async function updateLatestCommentUrls(notificationsToUpdate: { element: HTMLElement; notification: GitHubAggregated }[]) {
-  const providerToken = await getGitHubAccessToken();
-  const octokit = new Octokit({ auth: providerToken });
-  
-  const fetchPromises = notificationsToUpdate.map(async ({ element, notification }) => {
-    const { subject } = notification.notification;
-    let url = "";
-    let userType = "";
-    let avatarUrl = "";
-    let commentBody = "";
-
-    if (subject.latest_comment_url) {
-      try {
-        const response = await fetch(subject.latest_comment_url, {
-          headers: { Authorization: `Bearer ${providerToken}` },
-        });
-        const data = await response.json();
-        url = data.html_url;
-        userType = data.user.type;
-        avatarUrl = data.user.avatar_url; // get the comment author's avatar
-        commentBody = data.body; // get the comment body text
-
-        if(userType === "Bot" && !showBotNotifications) {
-          element.style.display = "none";
-        }
-
-        // check if commentBody contains HTML
-        const parser = new DOMParser();
-        const parsedDoc = parser.parseFromString(commentBody, "text/html");
-        if (parsedDoc.body.children.length > 0) {
-          commentBody = "This comment is in HTML format.";
-        }
-      } catch (error) {
-        console.error("Failed to fetch latest comment URL:", error);
-      }
-    }
-
-    if (!url) {
-      url = notification.issue?.html_url || notification.pullRequest?.html_url || "#";
-    }
-
-    // update the rendered element with the real URL
-    const issueElement = element.querySelector(".issue-element-inner");
-    const previewElement = issueElement?.querySelector(".latest-comment-preview");
-
-    // hide no comment notifications
-    if (!commentBody) {
-      element.style.display = "none";
-    }
-
-    if(previewElement){
-      const commentPreviewDiv = document.createElement("div");
-      commentPreviewDiv.classList.add("comment-preview");
-      if (commentBody) {
-        commentPreviewDiv.innerHTML = `
-          <img src="${avatarUrl ? avatarUrl: ""}" class="comment-avatar"/>
-          <span class="comment-body">${commentBody}</span>
-        `;
-        commentPreviewDiv.style.padding = "8px 0px";
-      }
-      previewElement.append(commentPreviewDiv);
-    }
-
-    if (issueElement) {
-      issueElement.addEventListener("click", async() => {
-        window.open(url, "_blank");
-        try{
-          await octokit.request('PATCH /notifications/threads/{thread_id}', {
-            thread_id: Number(notification.notification.id),
-            headers: {
-              'X-GitHub-Api-Version': '2022-11-28'
-            }
-          })
-          await octokit.request('DELETE /notifications/threads/{thread_id}', {
-            thread_id: Number(notification.notification.id),
-            headers: {
-              'X-GitHub-Api-Version': '2022-11-28'
-            }
-          })
-        } catch (error){
-          console.error("Failed to delete notification:", error);
-        }
-      });
-    }
-  });
-
-  await Promise.all(fetchPromises);
-}
-
-// Listen for changes in view toggle and update the URL accordingly
-export const proposalViewToggle = document.getElementById("view-toggle") as HTMLInputElement;
-proposalViewToggle.addEventListener("change", () => {
-  // const newURL = new URL(window.location.href);
-  // if (proposalViewToggle.checked) {
-  //   newURL.searchParams.set("proposal", "true");
-  // } else {
-  //   newURL.searchParams.delete("proposal");
-  // }
-  // window.history.replaceState({}, "", newURL.toString());
-});
 
 export function applyAvatarsToNotifications() {
   const notificationsContainer = document.getElementById("issues-container") as HTMLDivElement;
@@ -282,7 +265,7 @@ export function applyAvatarsToNotifications() {
     if (orgName) {
       const avatarUrl = organizationImageCache.get(orgName);
       if (avatarUrl) {
-        const avatarImg = issueElement.querySelector("img");
+        const avatarImg = issueElement.querySelector(".orgAvatar") as HTMLImageElement;
         if (avatarImg) {
           avatarImg.src = URL.createObjectURL(avatarUrl);
         }

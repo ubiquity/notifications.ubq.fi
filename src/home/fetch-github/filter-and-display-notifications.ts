@@ -88,6 +88,6 @@ export async function displayNotifications({
   const sortedIssues = sortIssuesController(notifications, sorting, options);
   //let sortedAndFiltered = sortedIssues.filter(getProposalsOnlyFilter(isProposalOnlyViewer));
   //sortedAndFiltered = filterIssuesByOrganization(sortedAndFiltered);
-  renderNotifications(sortedIssues, skipAnimation);
+  await renderNotifications(sortedIssues, skipAnimation);
   applyAvatarsToNotifications();
 }
