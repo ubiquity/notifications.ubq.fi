@@ -393,6 +393,9 @@
     font-weight: 400;
     text-rendering: geometricPrecision;
   }
+  .comment-preview{
+    padding: 8px 0px;
+  }
   @media screen and (max-width: 804px) {
     .mid {
       padding: 0 4px;
