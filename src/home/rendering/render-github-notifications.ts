@@ -217,6 +217,11 @@ async function updateLatestCommentUrls(notificationsToUpdate: { element: HTMLEle
     const issueElement = element.querySelector(".issue-element-inner");
     const previewElement = issueElement?.querySelector(".latest-comment-preview");
 
+    // hide no comment notifications
+    if (!commentBody) {
+      element.style.display = "none";
+    }
+
     if(previewElement){
       const commentPreviewDiv = document.createElement("div");
       commentPreviewDiv.classList.add("comment-preview");
