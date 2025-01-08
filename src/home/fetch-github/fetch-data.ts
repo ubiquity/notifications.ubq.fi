@@ -3,7 +3,7 @@ import { GitHubAggregated, GitHubIssue, GitHubNotification, GitHubNotifications,
 import { getGitHubAccessToken } from "../getters/get-github-access-token";
 import { handleRateLimit } from "./handle-rate-limit";
 import { RequestError } from "@octokit/request-error";
-// import { testAllNotifications } from "./test-all-notifications";
+import { testAllNotifications } from "./test-all-notifications";
 
 export const organizationImageCache = new Map<string, Blob | null>(); // this should be declared in image related script
 
@@ -243,14 +243,35 @@ export async function fetchAllNotifications(): Promise<GitHubAggregated[] | null
 
   if (!pullRequestNotifications && !issueNotifications) return null;
 
-  const allNotifications = [...(pullRequestNotifications || []), ...(issueNotifications || [])];
+  const allNotifications = testAllNotifications;//[...(pullRequestNotifications || []), ...(issueNotifications || [])];
 
-  // add backlink counts to each notification
-  for (const aggregated of allNotifications) {
+  // filter notifs with priority label
+  const filteredNotifications = allNotifications.filter((aggregated) => {
+    if (!aggregated.issue || !aggregated.issue.labels) {
+      return false;
+    }
+
+    return aggregated.issue.labels.some((label) => {
+      if (typeof label === "string" || !label.name) {
+        return false;
+      }
+
+      const match = label.name.match(/^(Priority): /);
+      if (match) {
+        console.log("issue", aggregated.issue.title, "label", label);
+        return true;
+      }
+
+      return false;
+    });
+  });
+
+  for (const aggregated of filteredNotifications) {
+    // count backlinks
     const backlinkCount = countBacklinks(aggregated, pullRequests, issues);
     aggregated.backlinkCount = backlinkCount;
   }
 
-  console.log("allNotifications", allNotifications);
-  return allNotifications;
+  console.log("filteredNotifications", filteredNotifications);
+  return filteredNotifications;
 }
