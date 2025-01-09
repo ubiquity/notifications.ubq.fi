@@ -20,7 +20,7 @@ async function fetchNotifications(): Promise<GitHubNotifications | null> {
     if (error instanceof RequestError && error.status === 403) {
       await handleRateLimit(octokit, error);
     }
-    console.warn("Error fetching notifications:", error);
+    console.warn("error fetching notifications:", error);
   }
   return null;
 }
@@ -46,11 +46,16 @@ function preFilterNotifications(devpoolRepos: Set<string>, notifications: GitHub
         notification.reason
       )
     ) {
+      console.log("skipping ", notification.subject.title, "cause of reason", notification.reason);
       return false;
     }
 
     // Ignore notifications from repos that are not in devpoolRepos
     const repoName = notification.repository.full_name;
+    if (!devpoolRepos.has(repoName)) {
+      console.log("skipping ", notification.subject.title, "cause of repo", repoName);
+      return false;
+    }
     return devpoolRepos.has(repoName);
   });
 }
@@ -113,20 +118,19 @@ export async function getPullRequestNotifications(
     const pullRequestUrl = notification.subject.url;
     const pullRequest = pullRequests.find((pr) => pr.url === pullRequestUrl);
     if (!pullRequest || pullRequest.draft || pullRequest.state === "closed") {
-      console.log("Pull request is draft or closed", pullRequest);
+      console.log("skipping ", notification.subject.title, "cause draft or closed");
       continue; // Skip draft or closed pull requests
     }
 
     const issue = await fetchIssueFromPullRequest(pullRequest, issues);
     if (!issue) {
-      console.log("No associated issue", pullRequest);
+      console.log("skipping ", notification.subject.title, "cause no associated issue");
       continue; // Skip if no associated issue
     }
 
     aggregatedData.push({ notification, pullRequest, issue, backlinkCount: 0 });
   }
 
-  console.log("pullRequestNotifications", aggregatedData);
   return aggregatedData;
 }
 
@@ -141,14 +145,13 @@ export function getIssueNotifications(devpoolRepos: Set<string>, notifications: 
     const issueUrl = notification.subject.url;
     const issue = issues.find((issue) => issue.url === issueUrl);
     if (!issue || issue.state === "closed") {
-      console.log("Issue is closed", issue);
+      console.log("skipping ", notification.subject.title, "cause issue is closed");
       continue; // Skip closed issues
     }
 
     aggregatedData.push({ notification, pullRequest: null, issue, backlinkCount: 0 });
   }
 
-  console.log("issueNotifications", aggregatedData);
   return aggregatedData;
 }
 
@@ -248,22 +251,28 @@ export async function fetchAllNotifications(): Promise<GitHubAggregated[] | null
   // filter notifs with priority label
   const filteredNotifications = allNotifications.filter((aggregated) => {
     if (!aggregated.issue || !aggregated.issue.labels) {
+      // skip if no issue or labels
+      console.log("skipping ", aggregated.notification.subject.title, "cause no labels or issue");
       return false;
     }
 
-    return aggregated.issue.labels.some((label) => {
+    const isSuccess = aggregated.issue.labels.some((label) => {
       if (typeof label === "string" || !label.name) {
         return false;
       }
 
       const match = label.name.match(/^(Priority): /);
       if (match) {
-        console.log("issue", aggregated.issue.title, "label", label);
         return true;
       }
 
       return false;
     });
+
+    if (!isSuccess){
+      console.log("skipping ", aggregated.notification.subject.title, "cause no priority label");
+    }
+    return isSuccess;
   });
 
   for (const aggregated of filteredNotifications) {

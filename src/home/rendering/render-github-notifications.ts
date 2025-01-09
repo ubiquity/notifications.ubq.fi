@@ -116,6 +116,7 @@ function setUpIssueElement(
   commentData: { userType: string, url: string; avatarUrl: string; commentBody: string }
 ) {
   if(commentData.userType === "Bot" && !showBotNotifications) {
+    console.log("bot notifications are hidden");
     issueElement.style.display = "none";
   }
 
