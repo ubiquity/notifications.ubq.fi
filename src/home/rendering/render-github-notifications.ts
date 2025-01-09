@@ -37,6 +37,11 @@ export async function renderNotifications(notifications: GitHubAggregated[], ski
     }
   }
   notificationsContainer.classList.add("ready");
+  
+  // Check if notificationsContainer has no children and render empty message if true
+  if (notificationsContainer.children.length === 0) {
+    renderEmpty();
+  }
 
   // Scroll to the top of the page
   window.scrollTo({ top: 0 });
