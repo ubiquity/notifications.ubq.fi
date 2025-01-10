@@ -98,8 +98,12 @@ function everyNewNotification({
 
   const commentData = commentsMap.get(notification.notification.id.toString());
 
-  if ((!commentData || commentData.commentBody === "") || (commentData.userType === "Bot" && !showBotNotifications)){
-    console.log("skipping ", notification.notification.subject.title, " because of empty comment or bot notification");
+  if (!commentData || (commentData.userType === "Bot" && !showBotNotifications)) {
+    console.log("skipping ", notification.notification.subject.title, " because of bot notification");
+    return;
+  }
+  if (commentData.commentBody === ""){
+    console.log("skipping ", notification.notification.subject.title, " because of empty comment");
     return;
   }
 
