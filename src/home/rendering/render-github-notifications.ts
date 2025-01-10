@@ -98,7 +98,10 @@ function everyNewNotification({
 
   const commentData = commentsMap.get(notification.notification.id.toString());
 
-  if ((!commentData || commentData.commentBody === "") || (commentData.userType === "Bot" && !showBotNotifications)) return;
+  if ((!commentData || commentData.commentBody === "") || (commentData.userType === "Bot" && !showBotNotifications)){
+    console.log("skipping ", notification.notification.subject.title, " because of empty comment or bot notification");
+    return;
+  }
 
   setUpIssueElement(providerToken, issueElement, notification, organizationName, repositoryName, labels, commentData);
   issueWrapper.appendChild(issueElement);
