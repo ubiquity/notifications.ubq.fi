@@ -56,14 +56,14 @@ void (async function home() {
   void displayNotifications();
 
   // Register service worker for PWA
-  // if ("serviceWorker" in navigator) {
-  //   navigator.serviceWorker
-  //     .register("/progressive-web-app.js")
-  //     .then(() => {
-  //       console.log("Service worker registered");
-  //     })
-  //     .catch((err) => {
-  //       console.log(err);
-  //     });
-  // }
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker
+      .register("/progressive-web-app.js")
+      .then(() => {
+        console.log("Service worker registered");
+      })
+      .catch((err) => {
+        console.log(err);
+      });
+  }
 })();
