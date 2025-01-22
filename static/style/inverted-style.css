@@ -985,7 +985,7 @@
     }
   }
 
-  @media (orientation: landscape) and (width > 800px) {
+  @media (orientation: landscape) and (width > 1005px) {
     #bottom-bar,
     #filters-bottom {
       display: none;
