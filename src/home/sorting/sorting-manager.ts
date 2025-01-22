@@ -1,6 +1,6 @@
-import { displayGitHubIssues, searchDisplayGitHubIssues } from "../fetch-github/fetch-and-display-previews";
+import { displayNotifications } from "../fetch-github/filter-and-display-notifications";
+import { flipShowBotNotifications, getNotifications, showBotNotifications } from "../home";
 import { renderErrorInModal } from "../rendering/display-popup-modal";
-import { proposalViewToggle } from "../rendering/render-github-issues";
 import { Sorting } from "./generate-sorting-buttons";
 
 export class SortingManager {
@@ -39,9 +39,6 @@ export class SortingManager {
     textBox.type = "text";
     textBox.id = `filter-${this._instanceId}`;
     textBox.placeholder = "Search";
-    textBox.spellcheck = false;
-    textBox.autocapitalize = "off";
-    textBox.draggable = false;
 
     // Handle CTRL+F
     document.addEventListener("keydown", (event) => {
@@ -56,78 +53,93 @@ export class SortingManager {
     const searchQuery = urlParams.get("search") || "";
     textBox.value = searchQuery;
 
-    const issuesContainer = document.getElementById("issues-container") as HTMLDivElement;
+    const notificationsContainer = document.getElementById("issues-container") as HTMLDivElement;
+
+    function filterNotifications() {
+      try {
+        const filterText = textBox.value.toLowerCase();
+        const notifications = Array.from(notificationsContainer.children) as HTMLDivElement[];
+        notifications.forEach(async (notification) => {
+          const notificationId = notification.children[0].getAttribute("data-issue-id");
+          if (!notificationId) return;
+          notification.classList.add("active");
+          const gitHubNotifications = await getNotifications();
+          if (!gitHubNotifications) return;
+          const gitHubNotification = gitHubNotifications.find((notification) => notification.notification.id === notificationId);
+          if (!gitHubNotification) return;
+
+          const searchableProperties = ["title", "body", "number", "html_url"] as const;
+          let searchableStrings: string[] = [];
+
+          // if it's an issue notification search issue properties
+          if (gitHubNotification.notification.subject.type === "Issue") {
+            searchableStrings = searchableProperties
+              .map((prop) => gitHubNotification.issue[prop]?.toString().toLowerCase())
+              .filter((str): str is string => str !== undefined);
+          }
+
+          // if it's a pull request notification search pull request properties
+          else if (gitHubNotification.notification.subject.type === "PullRequest") {
+            searchableStrings = searchableProperties
+              .map((prop) => (gitHubNotification.pullRequest ? gitHubNotification.pullRequest[prop]?.toString().toLowerCase() : ""))
+              .filter((str): str is string => str !== undefined);
+          }
+
+          searchableStrings.push(gitHubNotification.notification.subject.title.toLowerCase());
+
+          const isVisible = searchableStrings.some((str) => str?.includes(filterText));
+          notification.style.display = isVisible ? "block" : "none";
+        });
+      } catch (error) {
+        return renderErrorInModal(error as Error);
+      }
+    }
 
     // Observer to detect when children are added to the issues container (only once)
     const observer = new MutationObserver(() => {
-      if (issuesContainer.children.length > 0) {
+      if (notificationsContainer.children.length > 0) {
         observer.disconnect(); // Stop observing once children are present
-        if (searchQuery) {
-          try {
-            void searchDisplayGitHubIssues({
-              searchText: searchQuery,
-            });
-          } catch (error) {
-            renderErrorInModal(error as Error);
-          }
-        }
+        if (searchQuery) filterNotifications(); // Filter on load if search query exists
       }
     });
-    observer.observe(issuesContainer, { childList: true });
+    observer.observe(notificationsContainer, { childList: true });
 
-    // if the user types in the search box, update the URL and filter the issues
     textBox.addEventListener("input", () => {
       const filterText = textBox.value;
-      // Reset sorting buttons when there is text in search menu
-      if (filterText) {
-        this._resetSortButtons();
-      }
       // Update the URL with the search parameter
       const newURL = new URL(window.location.href);
-      if (filterText) {
-        newURL.searchParams.set("search", filterText);
-      } else {
-        newURL.searchParams.delete("search");
-      }
+      newURL.searchParams.set("search", filterText);
       window.history.replaceState({}, "", newURL.toString());
-      try {
-        void searchDisplayGitHubIssues({
-          searchText: filterText,
-        });
-      } catch (error) {
-        renderErrorInModal(error as Error);
-      }
+      filterNotifications(); // Run the filter function immediately on input
     });
-
-    // if the user changes between proposal view and directory view, update the search results
-    if (proposalViewToggle) {
-      proposalViewToggle.addEventListener("change", () => {
-        try {
-          void searchDisplayGitHubIssues({
-            searchText: textBox.value,
-          });
-        } catch (error) {
-          renderErrorInModal(error as Error);
-        }
-      });
-    }
 
     return textBox;
-  }
-
-  private _resetSortButtons() {
-    this._sortingButtons.querySelectorAll('input[type="radio"]').forEach((input) => {
-      if (input instanceof HTMLInputElement) {
-        input.checked = false;
-        input.setAttribute("data-ordering", "");
-      }
-    });
-    this._lastChecked = null;
   }
 
   private _generateSortingButtons(sortingOptions: readonly string[]) {
     const buttons = document.createElement("div");
     buttons.className = "labels";
+
+    const input = document.createElement("input");
+    input.style.display = "none";
+    input.type = "button";
+    input.id = `filter-bot-${this._instanceId}`;
+    const label = document.createElement("label");
+    label.htmlFor = `filter-bot-${this._instanceId}`;
+    label.textContent = showBotNotifications ? "Hide Bot" : "Show Bot";
+
+    input.addEventListener("click", () => {
+      flipShowBotNotifications();
+      label.textContent = showBotNotifications ? "Hide Bot" : "Show Bot";
+      try {
+        void displayNotifications();
+      } catch (error) {
+        renderErrorInModal(error as Error);
+      }
+    });
+
+    buttons.appendChild(input);
+    buttons.appendChild(label);
 
     sortingOptions.forEach((option) => {
       const input = this._createRadioButton(option);
@@ -209,7 +221,7 @@ export class SortingManager {
 
       // Apply the sorting based on the new state (normal or reverse)
       try {
-        void displayGitHubIssues({ sorting: option as Sorting, options: { ordering: newOrdering } });
+        void displayNotifications({ sorting: option as Sorting, options: { ordering: newOrdering } });
       } catch (error) {
         renderErrorCatch(error as ErrorEvent);
       }
@@ -218,7 +230,7 @@ export class SortingManager {
 
   private _clearSorting() {
     try {
-      void displayGitHubIssues();
+      void displayNotifications();
     } catch (error) {
       renderErrorInModal(error as Error);
     }

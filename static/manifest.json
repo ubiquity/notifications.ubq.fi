@@ -1,7 +1,7 @@
 {
-  "name": "DevPool Directory | Ubiquity DAO",
-  "short_name": "DevPool Directory",
-  "description": "View and sort through all of the available work within the DevPool network.",
+  "name": "Notifications | Ubiquity DAO",
+  "short_name": "Nofications",
+  "description": "View and sort through all of the notifications within the DevPool network.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#000410",
