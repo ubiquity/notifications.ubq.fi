@@ -3,7 +3,6 @@ import { GitHubAggregated, GitHubIssue, GitHubNotification, GitHubNotifications,
 import { getGitHubAccessToken } from "../getters/get-github-access-token";
 import { handleRateLimit } from "./handle-rate-limit";
 import { RequestError } from "@octokit/request-error";
-// import { testAllNotifications } from "./test-all-notifications";
 
 export const organizationImageCache = new Map<string, Blob | null>(); // this should be declared in image related script
 
