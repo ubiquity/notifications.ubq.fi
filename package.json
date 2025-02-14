@@ -1,7 +1,7 @@
 {
-  "name": "@ubiquity/work.ubq.fi",
+  "name": "@ubiquity/nofications.ubq.fi",
   "version": "1.0.0",
-  "description": "The DevPool Directory for UbiquityOS.",
+  "description": "The GitHub notifications viewer for UbiquityOS.",
   "main": "build/index.ts",
   "author": "Ubiquity DAO",
   "license": "MIT",
@@ -9,9 +9,7 @@
     "node": ">=20.10.0"
   },
   "scripts": {
-    "start": "run-p start-wrangler watch",
-    "start-wrangler": "npx wrangler pages dev static --port 8080",
-    "watch": "tsx build/esbuild-watch.ts",
+    "start": "tsx build/esbuild-server.ts",
     "build": "tsx build/esbuild-build.ts",
     "format": "run-s format:lint format:prettier format:cspell",
     "format:lint": "eslint --fix .",
@@ -20,9 +18,7 @@
     "knip": "knip --config .github/knip.ts",
     "knip-ci": "knip --no-exit-code --reporter json --config .github/knip.ts",
     "prepare": "husky install",
-    "test": "jest --setupFiles dotenv/config --coverage",
-    "cy:open": "cypress open",
-    "cy:run": "cypress run"
+    "test": "jest --setupFiles dotenv/config --coverage"
   },
   "keywords": [
     "typescript",
@@ -47,7 +43,6 @@
     "@types/node": "^20.10.0",
     "@typescript-eslint/eslint-plugin": "^6.13.1",
     "@typescript-eslint/parser": "^6.13.1",
-    "cypress": "13.11.0",
     "esbuild": "^0.19.8",
     "eslint": "^8.54.0",
     "eslint-config-prettier": "^9.0.0",

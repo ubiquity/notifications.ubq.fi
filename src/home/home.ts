@@ -1,15 +1,13 @@
 import { grid } from "../the-grid";
 import { authentication } from "./authentication";
-import { displayGitHubIssues } from "./fetch-github/fetch-and-display-previews";
-import { postLoadUpdateIssues } from "./fetch-github/fetch-issues-full";
+import { displayNotifications } from "./fetch-github/filter-and-display-notifications";
+import { fetchAvatars } from "./fetch-github/fetch-avatar";
+import { fetchAllNotifications } from "./fetch-github/fetch-data";
 import { readyToolbar } from "./ready-toolbar";
-import { initiateReferralCodeTracking } from "./register-referral";
 import { renderServiceMessage } from "./render-service-message";
 import { renderErrorInModal } from "./rendering/display-popup-modal";
-import { loadIssueFromUrl } from "./rendering/render-github-issues";
 import { renderGitRevision } from "./rendering/render-github-login-button";
 import { generateSortingToolbar } from "./sorting/generate-sorting-buttons";
-import { TaskManager } from "./task-manager";
 
 // All unhandled errors are caught and displayed in a modal
 window.addEventListener("error", (event: ErrorEvent) => renderErrorInModal(event.error));
@@ -20,27 +18,42 @@ window.addEventListener("unhandledrejection", (event: PromiseRejectionEvent) => 
   event.preventDefault();
 });
 
-initiateReferralCodeTracking();
 renderGitRevision();
 generateSortingToolbar();
 renderServiceMessage();
 
 grid(document.getElementById("grid") as HTMLElement, () => document.body.classList.add("grid-loaded")); // @DEV: display grid background
-const container = document.getElementById("issues-container") as HTMLDivElement;
+export const notificationsContainer = document.getElementById("issues-container") as HTMLDivElement;
 
-if (!container) {
+if (!notificationsContainer) {
   throw new Error("Could not find issues container");
 }
 
-export const taskManager = new TaskManager(container);
+// Should show bot
+export let showBotNotifications = false;
+export const flipShowBotNotifications = () => {
+  showBotNotifications = !showBotNotifications;
+}
+
+// Store notifications
+let notifications: Awaited<ReturnType<typeof fetchAllNotifications>> | undefined;
+
+// This is made to make notifications global
+export async function getNotifications() {
+  if (!notifications) {
+    notifications = await fetchAllNotifications();
+  }
+  return notifications;
+}
 
 void (async function home() {
   void authentication();
   void readyToolbar();
-  await taskManager.syncTasks(); // Sync tasks from cache on load
-  loadIssueFromUrl(); // Load issue preview from URL if present
-  void displayGitHubIssues(); // Display issues from cache
-  await postLoadUpdateIssues(); // Update cache and issues if cache is outdated
+  const notifications = await getNotifications();
+  if(notifications){
+    await fetchAvatars(notifications);
+  }
+  void displayNotifications();
 
   // Register service worker for PWA
   if ("serviceWorker" in navigator) {
