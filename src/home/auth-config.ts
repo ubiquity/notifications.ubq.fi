@@ -40,6 +40,11 @@ declare const AUTH_ACCESS_TOKEN: string;
 declare const AUTH_REFRESH_TOKEN: string;
 
 export function setupAuth() {
+  // Only set up test auth on localhost
+  if (!window.location.hostname.includes('localhost')) {
+    return;
+  }
+
   const authData: AuthData = {
     provider_token: AUTH_PROVIDER_TOKEN,
     access_token: AUTH_ACCESS_TOKEN,
