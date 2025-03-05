@@ -201,20 +201,15 @@ function setUpIssueElement(
   issueElement.addEventListener("click", async () => {
     window.open(commentData.url, "_blank");
     try {
+      // Only mark as read when clicked, don't delete
       await octokit.request("PATCH /notifications/threads/{thread_id}", {
         thread_id: Number(notification.notification.id),
         headers: {
           "X-GitHub-Api-Version": "2022-11-28",
         },
       });
-      await octokit.request("DELETE /notifications/threads/{thread_id}", {
-        thread_id: Number(notification.notification.id),
-        headers: {
-          "X-GitHub-Api-Version": "2022-11-28",
-        },
-      });
     } catch (error) {
-      console.error("Failed to delete notification:", error);
+      console.error("Failed to mark notification as read:", error);
     }
   });
 }
