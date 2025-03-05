@@ -1,9 +1,9 @@
-import { organizationImageCache } from "../fetch-github/fetch-data";
-import { GitHubAggregated } from "../github-types";
-import { getTimeAgo } from "./utils";
-import { notificationsContainer, showBotNotifications } from "../home";
-import { getGitHubAccessToken } from "../getters/get-github-access-token";
 import { Octokit } from "@octokit/rest";
+import { organizationImageCache } from "../fetch-github/fetch-data";
+import { getGitHubAccessToken } from "../getters/get-github-access-token";
+import { GitHubAggregated } from "../github-types";
+import { notificationsContainer, shouldShowBotNotifications } from "../home";
+import { getTimeAgo } from "./utils";
 
 export async function renderNotifications(notifications: GitHubAggregated[], skipAnimation: boolean) {
   const providerToken = await getGitHubAccessToken();
@@ -24,7 +24,7 @@ export async function renderNotifications(notifications: GitHubAggregated[], ski
 
   for (const notification of notifications) {
     if (!existingNotificationIds.has(notification.notification.id.toString())) {
-      const issueWrapper = everyNewNotification({ notification, notificationsContainer, commentsMap, providerToken});
+      const issueWrapper = everyNewNotification({ notification, notificationsContainer, commentsMap, providerToken });
 
       if (issueWrapper) {
         if (skipAnimation) {
@@ -37,7 +37,7 @@ export async function renderNotifications(notifications: GitHubAggregated[], ski
     }
   }
   notificationsContainer.classList.add("ready");
-  
+
   // Check if notificationsContainer has no children and render empty message if true
   if (notificationsContainer.children.length === 0) {
     renderEmpty();
@@ -53,12 +53,36 @@ export function renderEmpty() {
     notificationsContainer.innerHTML = "";
   }
   const issueWrapper = document.createElement("div");
-  issueWrapper.style.marginTop = "20px";
   const issueElement = document.createElement("div");
-  issueElement.innerHTML = `
-    <div class="info"><div class="title"><h3>No notifications found</h3></div></div>
-  `;
   issueElement.classList.add("issue-element-inner");
+  issueElement.innerHTML = `
+    <div class="info">
+      <div class="notification-icon">
+        <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="comment-avatar">
+            <path d="M6.457 1.047c.659-1.234 2.427-1.234 3.086 0l6.082 11.378A1.75 1.75 0 0 1 14.082 15H1.918a1.75 1.75 0 0 1-1.543-2.575Zm1.763.707a.25.25 0 0 0-.44 0L1.698 13.132a.25.25 0 0 0 .22.368h12.164a.25.25 0 0 0 .22-.368Zm.53 3.996v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 11a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path>
+        </svg>
+      </div>
+      <div class="text-info">
+        <div class="title">
+          <h3>No Notifications Available</h3>
+        </div>
+        <div class="partner">
+          <div class="full-repo-name">
+            <p class="organization-name">ubiquity-os</p>
+            <p class="repository-name">notifications</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="latest-comment-preview">
+      <div class="comment-preview">
+        <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="comment-avatar" style="visibility:hidden">
+            <path d="M6.457 1.047c.659-1.234 2.427-1.234 3.086 0l6.082 11.378A1.75 1.75 0 0 1 14.082 15H1.918a1.75 1.75 0 0 1-1.543-2.575Zm1.763.707a.25.25 0 0 0-.44 0L1.698 13.132a.25.25 0 0 0 .22.368h12.164a.25.25 0 0 0 .22-.368Zm.53 3.996v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 11a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path>
+        </svg>
+        <span class="comment-body">Please log in to view your notifications.</span>
+      </div>
+    </div>
+  `;
   issueWrapper.appendChild(issueElement);
   notificationsContainer.appendChild(issueWrapper);
 
@@ -80,11 +104,11 @@ function everyNewNotification({
   notification,
   notificationsContainer,
   commentsMap,
-  providerToken
+  providerToken,
 }: {
   notification: GitHubAggregated;
   notificationsContainer: HTMLDivElement;
-  commentsMap: Map<string, { userType: string, url: string; avatarUrl: string; commentBody: string }>;
+  commentsMap: Map<string, { userType: string; url: string; avatarUrl: string; commentBody: string }>;
   providerToken: string | null;
 }) {
   const issueWrapper = notificationTemplate.cloneNode(true) as HTMLDivElement;
@@ -98,11 +122,11 @@ function everyNewNotification({
 
   const commentData = commentsMap.get(notification.notification.id.toString());
 
-  if (!commentData || (commentData.userType === "Bot" && !showBotNotifications)) {
+  if (!commentData || (commentData.userType === "Bot" && !shouldShowBotNotifications)) {
     console.log("skipping ", notification.notification.subject.title, " because of bot notification");
     return;
   }
-  if (commentData.commentBody === ""){
+  if (commentData.commentBody === "") {
     console.log("skipping ", notification.notification.subject.title, " because of empty comment");
     return;
   }
@@ -120,9 +144,9 @@ function setUpIssueElement(
   organizationName: string,
   repositoryName: string,
   labels: string[],
-  commentData: { userType: string, url: string; avatarUrl: string; commentBody: string }
+  commentData: { userType: string; url: string; avatarUrl: string; commentBody: string }
 ) {
-  if(commentData.userType === "Bot" && !showBotNotifications) {
+  if (commentData.userType === "Bot" && !shouldShowBotNotifications) {
     console.log("bot notifications are hidden");
     issueElement.style.display = "none";
   }
@@ -157,7 +181,7 @@ function setUpIssueElement(
       ${image}
     </div>`;
 
-    const notificationIcon = issueElement.querySelector(".notification-icon");
+  const notificationIcon = issueElement.querySelector(".notification-icon");
 
   if (notification.notification.subject.type === "Issue" && notificationIcon) {
     notificationIcon.innerHTML = `
@@ -174,30 +198,30 @@ function setUpIssueElement(
       `;
   }
 
-    issueElement.addEventListener("click", async() => {
-      window.open(commentData.url, "_blank");
-      try{
-        await octokit.request('PATCH /notifications/threads/{thread_id}', {
-          thread_id: Number(notification.notification.id),
-          headers: {
-            'X-GitHub-Api-Version': '2022-11-28'
-          }
-        })
-        await octokit.request('DELETE /notifications/threads/{thread_id}', {
-          thread_id: Number(notification.notification.id),
-          headers: {
-            'X-GitHub-Api-Version': '2022-11-28'
-          }
-        })
-      } catch (error){
-        console.error("Failed to delete notification:", error);
-      }
-    });
+  issueElement.addEventListener("click", async () => {
+    window.open(commentData.url, "_blank");
+    try {
+      await octokit.request("PATCH /notifications/threads/{thread_id}", {
+        thread_id: Number(notification.notification.id),
+        headers: {
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
+      });
+      await octokit.request("DELETE /notifications/threads/{thread_id}", {
+        thread_id: Number(notification.notification.id),
+        headers: {
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
+      });
+    } catch (error) {
+      console.error("Failed to delete notification:", error);
+    }
+  });
 }
 
 async function fetchLatestComments(notifications: GitHubAggregated[]) {
   const providerToken = await getGitHubAccessToken();
-  const commentsMap = new Map<string, { userType: string, url: string; avatarUrl: string; commentBody: string }>();
+  const commentsMap = new Map<string, { userType: string; url: string; avatarUrl: string; commentBody: string }>();
 
   await Promise.all(
     notifications.map(async (notification) => {
@@ -210,7 +234,7 @@ async function fetchLatestComments(notifications: GitHubAggregated[]) {
       if (subject.latest_comment_url) {
         try {
           const response = await fetch(subject.latest_comment_url, {
-            headers: { Authorization: `Bearer ${providerToken}` }
+            headers: { Authorization: `Bearer ${providerToken}` },
           });
           const data = await response.json();
           userType = data.user.type;

@@ -1,7 +1,7 @@
 {
   "name": "Notifications | Ubiquity DAO",
-  "short_name": "Nofications",
-  "description": "View and sort through all of the notifications within the DevPool network.",
+  "short_name": "Notifications",
+  "description": "View and sort through all of the notifications within the UbiquityOS network.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#000410",

@@ -1,13 +1,19 @@
 import { grid } from "../the-grid";
 import { authentication } from "./authentication";
-import { displayNotifications } from "./fetch-github/filter-and-display-notifications";
 import { fetchAvatars } from "./fetch-github/fetch-avatar";
 import { fetchAllNotifications } from "./fetch-github/fetch-data";
+import { displayNotifications } from "./fetch-github/filter-and-display-notifications";
+import { initPullToRefresh } from "./pull-to-refresh";
 import { readyToolbar } from "./ready-toolbar";
 import { renderServiceMessage } from "./render-service-message";
 import { renderErrorInModal } from "./rendering/display-popup-modal";
 import { renderGitRevision } from "./rendering/render-github-login-button";
 import { generateSortingToolbar } from "./sorting/generate-sorting-buttons";
+
+import { setupAuth } from "./auth-config";
+
+// Set up authentication from environment variables
+setupAuth();
 
 // All unhandled errors are caught and displayed in a modal
 window.addEventListener("error", (event: ErrorEvent) => renderErrorInModal(event.error));
@@ -30,9 +36,9 @@ if (!notificationsContainer) {
 }
 
 // Should show bot
-export let showBotNotifications = false;
-export const flipShowBotNotifications = () => {
-  showBotNotifications = !showBotNotifications;
+export let shouldShowBotNotifications = false;
+export function flipShowBotNotifications() {
+  shouldShowBotNotifications = !shouldShowBotNotifications;
 }
 
 // Store notifications
@@ -46,14 +52,26 @@ export async function getNotifications() {
   return notifications;
 }
 
+async function refreshNotifications() {
+  notifications = undefined; // Clear cache
+  const newNotifications = await fetchAllNotifications();
+  if (newNotifications) {
+    await fetchAvatars(newNotifications);
+  }
+  await displayNotifications();
+}
+
 void (async function home() {
   void authentication();
   void readyToolbar();
   const notifications = await getNotifications();
-  if(notifications){
+  if (notifications) {
     await fetchAvatars(notifications);
   }
   void displayNotifications();
+
+  // Initialize pull-to-refresh
+  initPullToRefresh(refreshNotifications);
 
   // Register service worker for PWA
   if ("serviceWorker" in navigator) {

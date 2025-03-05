@@ -1,8 +1,8 @@
+import { execSync } from "child_process";
 import { config } from "dotenv";
 import esbuild from "esbuild";
 import { invertColors } from "./plugins/invert-colors";
 import { pwaManifest } from "./plugins/pwa-manifest";
-import { execSync } from "child_process";
 config();
 
 const typescriptEntries = ["src/home/home.ts"];
@@ -25,7 +25,7 @@ export const esBuildContext: esbuild.BuildOptions = {
     ".json": "dataurl",
   },
   outdir: "static/dist",
-  define: createEnvDefines(["SUPABASE_URL", "SUPABASE_ANON_KEY"], {
+  define: createEnvDefines(["SUPABASE_URL", "SUPABASE_ANON_KEY", "AUTH_TOKEN_KEY", "AUTH_PROVIDER_TOKEN", "AUTH_ACCESS_TOKEN", "AUTH_REFRESH_TOKEN"], {
     SUPABASE_STORAGE_KEY: generateSupabaseStorageKey(),
     GIT_REVISION: execSync(`git rev-parse --short HEAD`).toString().trim(),
     NODE_ENV: process.env.NODE_ENV || "development",
@@ -44,7 +44,12 @@ function createEnvDefines(environmentVariables: string[], generatedAtBuild: Reco
     if (envVar !== undefined) {
       defines[name] = JSON.stringify(envVar);
     } else {
-      throw new Error(`Missing environment variable: ${name}`);
+      if (name.startsWith("AUTH_")) {
+        console.warn(`Warning: ${name} is not set. This is optional for testing purposes.`);
+        defines[name] = JSON.stringify("");
+      } else {
+        throw new Error(`Missing environment variable: ${name}`);
+      }
     }
   }
   for (const key in generatedAtBuild) {
