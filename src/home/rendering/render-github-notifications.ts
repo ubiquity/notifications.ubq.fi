@@ -40,14 +40,14 @@ export async function renderNotifications(notifications: GitHubAggregated[], ski
 
   // Check if notificationsContainer has no children and render empty message if true
   if (notificationsContainer.children.length === 0) {
-    renderEmpty();
+    await renderEmpty();
   }
 
   // Scroll to the top of the page
   window.scrollTo({ top: 0 });
 }
 
-export function renderEmpty() {
+export async function renderEmpty() {
   if (notificationsContainer.classList.contains("ready")) {
     notificationsContainer.classList.remove("ready");
     notificationsContainer.innerHTML = "";
@@ -55,16 +55,33 @@ export function renderEmpty() {
   const issueWrapper = document.createElement("div");
   const issueElement = document.createElement("div");
   issueElement.classList.add("issue-element-inner");
+
+  const providerToken = await getGitHubAccessToken();
+  const isLoggedIn = providerToken !== null;
+
+  const message = isLoggedIn ? "Take a break, write some code, do what you do best." : "Please log in to view your notifications.";
+  const title = isLoggedIn ? "All caught up!" : "No notifications available";
+
   issueElement.innerHTML = `
     <div class="info">
       <div class="notification-icon">
-        <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="comment-avatar">
-            <path d="M6.457 1.047c.659-1.234 2.427-1.234 3.086 0l6.082 11.378A1.75 1.75 0 0 1 14.082 15H1.918a1.75 1.75 0 0 1-1.543-2.575Zm1.763.707a.25.25 0 0 0-.44 0L1.698 13.132a.25.25 0 0 0 .22.368h12.164a.25.25 0 0 0 .22-.368Zm.53 3.996v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 11a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path>
-        </svg>
+        ${
+          isLoggedIn
+            ? `
+          <svg aria-label="All notifications read" role="img" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-check">
+              <path fill="#1a7f37" d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path>
+          </svg>
+        `
+            : `
+          <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-sign-in">
+              <path d="M2 2.75C2 1.784 2.784 1 3.75 1h2.5a.75.75 0 0 1 0 1.5h-2.5a.25.25 0 0 0-.25.25v10.5c0 .138.112.25.25.25h2.5a.75.75 0 0 1 0 1.5h-2.5A1.75 1.75 0 0 1 2 13.25Zm6.56 4.5h5.69a.75.75 0 0 1 0 1.5H8.56l1.97 1.97a.75.75 0 0 1-1.06 1.06L6.22 8.53a.75.75 0 0 1 0-1.06l3.25-3.25a.75.75 0 1 1 1.06 1.06L8.56 7.25Z"></path>
+          </svg>
+        `
+        }
       </div>
       <div class="text-info">
         <div class="title">
-          <h3>No Notifications Available</h3>
+          <h3>${title}</h3>
         </div>
         <div class="partner">
           <div class="full-repo-name">
@@ -79,7 +96,7 @@ export function renderEmpty() {
         <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="comment-avatar" style="visibility:hidden">
             <path d="M6.457 1.047c.659-1.234 2.427-1.234 3.086 0l6.082 11.378A1.75 1.75 0 0 1 14.082 15H1.918a1.75 1.75 0 0 1-1.543-2.575Zm1.763.707a.25.25 0 0 0-.44 0L1.698 13.132a.25.25 0 0 0 .22.368h12.164a.25.25 0 0 0 .22-.368Zm.53 3.996v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 11a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path>
         </svg>
-        <span class="comment-body">Please log in to view your notifications.</span>
+        <span class="comment-body">${message}</span>
       </div>
     </div>
   `;
@@ -201,20 +218,15 @@ function setUpIssueElement(
   issueElement.addEventListener("click", async () => {
     window.open(commentData.url, "_blank");
     try {
+      // Only mark as read when clicked, don't delete
       await octokit.request("PATCH /notifications/threads/{thread_id}", {
         thread_id: Number(notification.notification.id),
         headers: {
           "X-GitHub-Api-Version": "2022-11-28",
         },
       });
-      await octokit.request("DELETE /notifications/threads/{thread_id}", {
-        thread_id: Number(notification.notification.id),
-        headers: {
-          "X-GitHub-Api-Version": "2022-11-28",
-        },
-      });
     } catch (error) {
-      console.error("Failed to delete notification:", error);
+      console.error("Failed to mark notification as read:", error);
     }
   });
 }

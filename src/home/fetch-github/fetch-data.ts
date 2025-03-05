@@ -1,8 +1,8 @@
-import { Octokit } from "@octokit/rest";
-import { GitHubAggregated, GitHubIssue, GitHubNotification, GitHubNotifications, GitHubPullRequest } from "../github-types";
-import { getGitHubAccessToken } from "../getters/get-github-access-token";
-import { handleRateLimit } from "./handle-rate-limit";
 import { RequestError } from "@octokit/request-error";
+import { Octokit } from "@octokit/rest";
+import { getGitHubAccessToken } from "../getters/get-github-access-token";
+import { GitHubAggregated, GitHubIssue, GitHubNotification, GitHubNotifications, GitHubPullRequest } from "../github-types";
+import { handleRateLimit } from "./handle-rate-limit";
 
 export const organizationImageCache = new Map<string, Blob | null>(); // this should be declared in image related script
 
@@ -12,7 +12,13 @@ async function fetchNotifications(): Promise<GitHubNotifications | null> {
   const octokit = new Octokit({ auth: providerToken });
 
   try {
-    const notifications = (await octokit.request("GET /notifications")).data as GitHubNotifications;
+    const notifications = (await octokit.request("GET /notifications", {
+      headers: {
+        "X-GitHub-Api-Version": "2022-11-28"
+      },
+      all: false, // Only get unread notifications
+      participating: true // Only get notifications in which the user is directly participating
+    })).data as GitHubNotifications;
     console.log("unfiltered", notifications);
     return notifications;
   } catch (error) {

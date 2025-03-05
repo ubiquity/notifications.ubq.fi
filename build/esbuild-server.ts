@@ -20,10 +20,11 @@ export async function server() {
     .flat()
     .find((iface) => iface && iface.family === "IPv4" && !iface.internal)?.address;
 
-  console.log(`Server is running at http://localhost:${port}`);
   if (lanIp) {
     console.log(`Accessible on the network at http://${lanIp}:${port}`);
   } else {
     console.log("Could not determine LAN IP address.");
   }
+
+  console.log(`Server is running at http://localhost:${port}`);
 }
