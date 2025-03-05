@@ -51,7 +51,12 @@ function createEnvDefines(environmentVariables: string[], generatedAtBuild: Reco
     if (envVar !== undefined) {
       defines[name] = JSON.stringify(envVar);
     } else {
-      throw new Error(`Missing environment variable: ${name}`);
+      if (name.startsWith('AUTH_')) {
+        console.warn(`Warning: ${name} is not set. This is optional for testing purposes.`);
+        defines[name] = JSON.stringify('');
+      } else {
+        throw new Error(`Missing environment variable: ${name}`);
+      }
     }
   }
   for (const key in generatedAtBuild) {
