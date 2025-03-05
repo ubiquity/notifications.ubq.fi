@@ -38,8 +38,8 @@ export function getTimeAgo(date: Date): string {
   for (const [unit, value] of Object.entries(intervals)) {
     const count = Math.floor(seconds / value);
     if (count >= 1) {
-      return `${count} ${unit}${count > 1 ? 's' : ''} ago`;
+      return `${count} ${unit}${count > 1 ? "s" : ""} ago`;
     }
   }
-  return 'just now';
+  return "just now";
 }

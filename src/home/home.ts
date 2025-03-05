@@ -37,7 +37,7 @@ if (!notificationsContainer) {
 
 // Should show bot
 export let shouldShowBotNotifications = false;
-export const flipShowBotNotifications = () => {
+export function flipShowBotNotifications() {
   shouldShowBotNotifications = !shouldShowBotNotifications;
 }
 

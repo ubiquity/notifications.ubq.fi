@@ -184,7 +184,7 @@ function countBacklinks(aggregated: GitHubAggregated, allPullRequests: GitHubPul
   const issueShortRefRegex = issueNumber ? new RegExp(`#${issueNumber}\\b`, "g") : null;
 
   // check backlinks in a body
-  const countMatches = (body: string | null, repo: string, owner: string): number => {
+  function countMatches(body: string | null, repo: string, owner: string): number {
     let count = 0;
     if (!body) return count;
 
@@ -195,7 +195,7 @@ function countBacklinks(aggregated: GitHubAggregated, allPullRequests: GitHubPul
     }
 
     return count;
-  };
+  }
 
   let totalCount = 0;
 
@@ -268,7 +268,7 @@ export async function fetchAllNotifications(): Promise<GitHubAggregated[] | null
       return false;
     });
 
-    if (!isSuccess){
+    if (!isSuccess) {
       console.log("skipping ", aggregated.notification.subject.title, "cause no priority label");
     }
     return isSuccess;

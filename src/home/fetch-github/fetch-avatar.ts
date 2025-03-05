@@ -1,9 +1,9 @@
 import { Octokit } from "@octokit/rest";
 import { getGitHubAccessToken } from "../getters/get-github-access-token";
 import { getImageFromCache, saveImageToCache } from "../getters/get-indexed-db";
+import { GitHubAggregated } from "../github-types";
 import { renderErrorInModal } from "../rendering/display-popup-modal";
 import { organizationImageCache } from "./fetch-data";
-import { GitHubAggregated, GitHubNotification, GitHubNotifications } from "../github-types";
 
 // Map to track ongoing avatar fetches
 const pendingFetches: Map<string, Promise<Blob | void>> = new Map();

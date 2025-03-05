@@ -129,7 +129,5 @@ export function initPullToRefresh(onRefresh: () => Promise<void>) {
         indicator.classList.remove("refreshing", "ready");
       }
     }
-
-
   });
 }
