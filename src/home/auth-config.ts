@@ -41,7 +41,7 @@ declare const AUTH_REFRESH_TOKEN: string;
 
 export function setupAuth() {
   // Only set up test auth on localhost
-  if (!window.location.hostname.includes('localhost')) {
+  if (!window.location.hostname.includes("localhost")) {
     return;
   }
 
@@ -51,36 +51,36 @@ export function setupAuth() {
     expires_in: 86400,
     expires_at: 1741220191,
     refresh_token: AUTH_REFRESH_TOKEN,
-    token_type: 'bearer',
+    token_type: "bearer",
     user: {
-      id: '176def94-cb0a-4ceb-b1c0-8582b09ffa9d',
-      aud: 'authenticated',
-      role: 'authenticated',
-      email: 'github@pavlovcik.com',
-      email_confirmed_at: '2023-11-30T06:27:23.941923Z',
-      phone: '',
-      confirmed_at: '2023-11-30T06:27:23.941923Z',
-      last_sign_in_at: '2025-03-04T23:32:09.772191Z',
+      id: "176def94-cb0a-4ceb-b1c0-8582b09ffa9d",
+      aud: "authenticated",
+      role: "authenticated",
+      email: "github@pavlovcik.com",
+      email_confirmed_at: "2023-11-30T06:27:23.941923Z",
+      phone: "",
+      confirmed_at: "2023-11-30T06:27:23.941923Z",
+      last_sign_in_at: "2025-03-04T23:32:09.772191Z",
       app_metadata: {
-        provider: 'github',
-        providers: ['github']
+        provider: "github",
+        providers: ["github"],
       },
       user_metadata: {
-        avatar_url: 'https://avatars.githubusercontent.com/u/4975670?v=4',
-        email: 'github@pavlovcik.com',
+        avatar_url: "https://avatars.githubusercontent.com/u/4975670?v=4",
+        email: "github@pavlovcik.com",
         email_verified: true,
-        full_name: 'アレクサンダー.eth',
-        iss: 'https://api.github.com',
-        name: 'アレクサンダー.eth',
+        full_name: "アレクサンダー.eth",
+        iss: "https://api.github.com",
+        name: "アレクサンダー.eth",
         phone_verified: false,
-        preferred_username: '0x4007',
-        provider_id: '4975670',
-        sub: '4975670',
-        user_name: '0x4007'
-      }
-    }
+        preferred_username: "0x4007",
+        provider_id: "4975670",
+        sub: "4975670",
+        user_name: "0x4007",
+      },
+    },
   };
 
   localStorage.setItem(AUTH_TOKEN_KEY, JSON.stringify(authData));
-  console.log('Authentication data set in localStorage');
+  console.log("Authentication data set in localStorage");
 }

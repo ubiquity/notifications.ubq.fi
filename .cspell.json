@@ -1,4 +1,5 @@
 {
   "version": "0.2",
+  "ignorePaths": ["dist"],
   "words": ["devpool", "octocat", "ratelimit", "supabase", "UBIQUIBOT"]
 }
