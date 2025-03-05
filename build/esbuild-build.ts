@@ -1,8 +1,8 @@
+import { execSync } from "child_process";
 import { config } from "dotenv";
 import esbuild from "esbuild";
 import { invertColors } from "./plugins/invert-colors";
 import { pwaManifest } from "./plugins/pwa-manifest";
-import { execSync } from "child_process";
 config();
 
 const typescriptEntries = ["src/home/home.ts"];
@@ -25,7 +25,14 @@ export const esBuildContext: esbuild.BuildOptions = {
     ".json": "dataurl",
   },
   outdir: "static/dist",
-  define: createEnvDefines(["SUPABASE_URL", "SUPABASE_ANON_KEY"], {
+  define: createEnvDefines([
+    "SUPABASE_URL",
+    "SUPABASE_ANON_KEY",
+    "AUTH_TOKEN_KEY",
+    "AUTH_PROVIDER_TOKEN",
+    "AUTH_ACCESS_TOKEN",
+    "AUTH_REFRESH_TOKEN"
+  ], {
     SUPABASE_STORAGE_KEY: generateSupabaseStorageKey(),
     GIT_REVISION: execSync(`git rev-parse --short HEAD`).toString().trim(),
     NODE_ENV: process.env.NODE_ENV || "development",

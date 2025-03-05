@@ -1,9 +1,9 @@
-import { organizationImageCache } from "../fetch-github/fetch-data";
-import { GitHubAggregated } from "../github-types";
-import { getTimeAgo } from "./utils";
-import { notificationsContainer, showBotNotifications } from "../home";
-import { getGitHubAccessToken } from "../getters/get-github-access-token";
 import { Octokit } from "@octokit/rest";
+import { organizationImageCache } from "../fetch-github/fetch-data";
+import { getGitHubAccessToken } from "../getters/get-github-access-token";
+import { GitHubAggregated } from "../github-types";
+import { notificationsContainer, shouldShowBotNotifications } from "../home";
+import { getTimeAgo } from "./utils";
 
 export async function renderNotifications(notifications: GitHubAggregated[], skipAnimation: boolean) {
   const providerToken = await getGitHubAccessToken();
@@ -37,7 +37,7 @@ export async function renderNotifications(notifications: GitHubAggregated[], ski
     }
   }
   notificationsContainer.classList.add("ready");
-  
+
   // Check if notificationsContainer has no children and render empty message if true
   if (notificationsContainer.children.length === 0) {
     renderEmpty();
@@ -98,7 +98,7 @@ function everyNewNotification({
 
   const commentData = commentsMap.get(notification.notification.id.toString());
 
-  if (!commentData || (commentData.userType === "Bot" && !showBotNotifications)) {
+  if (!commentData || (commentData.userType === "Bot" && !shouldShowBotNotifications)) {
     console.log("skipping ", notification.notification.subject.title, " because of bot notification");
     return;
   }
@@ -122,7 +122,7 @@ function setUpIssueElement(
   labels: string[],
   commentData: { userType: string, url: string; avatarUrl: string; commentBody: string }
 ) {
-  if(commentData.userType === "Bot" && !showBotNotifications) {
+  if(commentData.userType === "Bot" && !shouldShowBotNotifications) {
     console.log("bot notifications are hidden");
     issueElement.style.display = "none";
   }

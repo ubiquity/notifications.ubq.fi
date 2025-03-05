@@ -1,5 +1,5 @@
 import { displayNotifications } from "../fetch-github/filter-and-display-notifications";
-import { flipShowBotNotifications, getNotifications, showBotNotifications } from "../home";
+import { flipShowBotNotifications, getNotifications, shouldShowBotNotifications } from "../home";
 import { renderErrorInModal } from "../rendering/display-popup-modal";
 import { Sorting } from "./generate-sorting-buttons";
 
@@ -126,11 +126,11 @@ export class SortingManager {
     input.id = `filter-bot-${this._instanceId}`;
     const label = document.createElement("label");
     label.htmlFor = `filter-bot-${this._instanceId}`;
-    label.textContent = showBotNotifications ? "Hide Bot" : "Show Bot";
+    label.textContent = shouldShowBotNotifications ? "Hide Bot" : "Show Bot";
 
     input.addEventListener("click", () => {
       flipShowBotNotifications();
-      label.textContent = showBotNotifications ? "Hide Bot" : "Show Bot";
+      label.textContent = shouldShowBotNotifications ? "Hide Bot" : "Show Bot";
       try {
         void displayNotifications();
       } catch (error) {
