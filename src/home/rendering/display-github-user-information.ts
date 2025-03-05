@@ -17,12 +17,12 @@ export async function displayGitHubUserInformation(gitHubUser: GitHubUser) {
   }
   img.alt = gitHubUser.login;
 
-  const divNameElement = document.createElement("div");
+  // const divNameElement = document.createElement("div");
 
-  // Falls back to login because the name is not required for a GitHub user
-  divNameElement.textContent = gitHubUser.name || gitHubUser.login;
-  divNameElement.classList.add("full");
-  authenticatedDivElement.appendChild(divNameElement);
+  // // Falls back to login because the name is not required for a GitHub user
+  // divNameElement.textContent = gitHubUser.name || gitHubUser.login;
+  // divNameElement.classList.add("full");
+  // authenticatedDivElement.appendChild(divNameElement);
   authenticatedDivElement.appendChild(img);
 
   authenticatedDivElement.addEventListener("click", async function signOut() {

@@ -368,9 +368,9 @@
     max-height: 48px;
   }
   #authenticated > img {
-    height: 35px;
+    height: 36px;
     margin-left: 4px;
-    border-radius: 50%;
+    border-radius: 6px;
   }
   .toolbar[data-authenticated="true"] > #github-login-button {
     display: none;
@@ -409,42 +409,39 @@
       display: none;
     }
   }
-  @media screen and (max-width: 3000px) {
-    .partner {
-      margin-top: 0;
-    }
-    .full-repo-name {
-      display: unset;
-      display: flex;
-      width: auto;
-    }
-    .issue-element-inner > * {
-      max-width: unset;
-    }
-    .title > h3 {
-      white-space: nowrap;
-    }
-    .full {
-      display: none !important;
-    }
-    .issue-element-inner {
-      display: block;
-    }
-    #issues-container .labels {
-      margin-top: 4px;
-    }
-    #branding {
-      margin: auto;
-    }
-    .toolbar {
-      overflow-x: auto;
-    }
-    .toolbar button {
-      height: 24px;
-      padding: 4px 16px;
-      line-height: 1;
-    }
+  .partner {
+    margin-top: 0;
   }
+  .full-repo-name {
+    display: unset;
+    display: flex;
+    width: auto;
+  }
+  .issue-element-inner > * {
+    max-width: unset;
+  }
+  .title > h3 {
+    white-space: nowrap;
+  }
+
+  .issue-element-inner {
+    display: block;
+  }
+  #issues-container .labels {
+    margin-top: 4px;
+  }
+  #branding {
+    margin: auto;
+  }
+  .toolbar {
+    overflow-x: auto;
+  }
+  .toolbar button {
+    height: 24px;
+    padding: 4px 16px;
+    line-height: 1;
+  }
+
   @media screen and (max-width: 1280px) {
     .preview {
       max-width: calc(100vw - 14px);
@@ -464,6 +461,12 @@
       pointer-events: none;
     }
   }
+  @media screen and (max-width: 1385px) {
+    .full {
+      display: none !important;
+    }
+  }
+
   .toolbar > button {
     text-align: center;
   }
