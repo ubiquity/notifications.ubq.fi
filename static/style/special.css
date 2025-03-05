@@ -128,6 +128,7 @@
 /* pull refresh indicator below */
 
 .pull-refresh-indicator {
+  opacity: 0;
   position: fixed;
   top: 48px;
   left: 0;
@@ -154,10 +155,8 @@
   pointer-events: none;
 }
 
-.pull-refresh-indicator.refreshing .pull-refresh-spinner {
-  animation:
-    spin 1.5s cubic-bezier(1, 0, 1, 1) infinite alternate,
-    fadeOut 1.5s ease-out 0s forwards;
+.pull-refresh-indicator .pull-refresh-spinner {
+  animation: spin 1.5s cubic-bezier(1, 0, 1, 1) infinite alternate;
 }
 
 @media (prefers-color-scheme: light) {
