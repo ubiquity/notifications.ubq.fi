@@ -12,6 +12,13 @@ let isRefreshing = false;
 let scrollDistance = 0;
 let isMouseScrolling = false;
 
+function resetIndicator(indicator: HTMLDivElement) {
+  scrollDistance = 0;
+  indicator.style.transform = "translateY(-100%)";
+  indicator.style.opacity = "0";
+  indicator.classList.remove("refreshing", "ready");
+}
+
 function createRefreshIndicator(): HTMLDivElement {
   const indicator = document.createElement("div");
   indicator.className = "pull-refresh-indicator";
@@ -68,9 +75,7 @@ export function initPullToRefresh(onRefresh: () => Promise<void>) {
               indicator.classList.remove("refreshing", "ready");
             }
           }
-          scrollDistance = 0;
-          indicator.style.transform = "translateY(-100%)";
-          indicator.style.opacity = "0";
+          resetIndicator(indicator);
         }, 150) as unknown as number;
       }
     },
@@ -129,5 +134,7 @@ export function initPullToRefresh(onRefresh: () => Promise<void>) {
         indicator.classList.remove("refreshing", "ready");
       }
     }
+
+    resetIndicator(indicator);
   });
 }
