@@ -125,9 +125,11 @@
   }
 }
 
+/* pull refresh indicator below */
+
 .pull-refresh-indicator {
   position: fixed;
-  top: 0;
+  top: 48px;
   left: 0;
   right: 0;
   height: 50px;
@@ -141,40 +143,55 @@
 }
 
 .pull-refresh-spinner {
-  width: 24px;
-  height: 24px;
-}
-
-.pull-refresh-spinner svg {
-  width: 100%;
-  height: 100%;
-  fill: var(--text-color);
+  width: 48px;
+  height: 48px;
+  border: 4px solid #ffffff40;
+  border-top: 4px solid #fff;
+  border-radius: 50%;
+  opacity: 1;
+  transition: 0.5s all ease-in-out;
   animation: none;
+  pointer-events: none;
 }
 
-.pull-refresh-indicator.ready svg {
-  animation: bounce 0.4s ease-in-out infinite;
+.pull-refresh-indicator.refreshing .pull-refresh-spinner {
+  animation:
+    spin 1.5s cubic-bezier(1, 0, 1, 1) infinite alternate,
+    fadeOut 1.5s ease-out 0s forwards;
 }
 
-.pull-refresh-indicator.refreshing svg {
-  animation: rotate 1s linear infinite;
-}
-
-@keyframes rotate {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
+@media (prefers-color-scheme: light) {
+  .pull-refresh-indicator.refreshing .pull-refresh-spinner {
+    filter: blur(0px);
   }
 }
 
-@keyframes bounce {
-  0%,
+@media (prefers-color-scheme: dark) {
+  .pull-refresh-indicator.refreshing .pull-refresh-spinner {
+    filter: blur(0px) drop-shadow(0 0 8px #fff);
+  }
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0);
+  }
+  75% {
+    transform: rotate(5400deg);
+    border-bottom-color: #fff;
+  }
   100% {
-    transform: translateY(0);
+    transform: rotate(7200deg);
+    border-color: #fff;
   }
-  50% {
-    transform: translateY(-5px);
+}
+
+@keyframes fadeOut {
+  0% {
+    filter: opacity(1);
+  }
+  100% {
+    filter: opacity(0);
+    border-color: transparent;
   }
 }

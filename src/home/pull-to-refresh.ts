@@ -16,11 +16,7 @@ function createRefreshIndicator(): HTMLDivElement {
   const indicator = document.createElement('div');
   indicator.className = 'pull-refresh-indicator';
   indicator.innerHTML = `
-    <div class="pull-refresh-spinner">
-      <svg viewBox="0 0 24 24">
-        <path d="M12,4V2A10,10 0 0,0 2,12H4A8,8 0 0,1 12,4Z" />
-      </svg>
-    </div>
+    <div class="pull-refresh-spinner"></div>
   `;
   document.body.appendChild(indicator);
   return indicator;
@@ -65,6 +61,8 @@ export function initPullToRefresh(onRefresh: () => Promise<void>) {
 
           try {
             await onRefresh();
+            // Let the spin and fadeOut animations complete
+            await new Promise(resolve => setTimeout(resolve, 6500)); // 1.5s for spin + 5s delay before fadeOut
           } finally {
             isRefreshing = false;
             indicator.classList.remove('refreshing', 'ready');
@@ -116,6 +114,8 @@ export function initPullToRefresh(onRefresh: () => Promise<void>) {
 
       try {
         await onRefresh();
+        // Let the spin and fadeOut animations complete
+        await new Promise(resolve => setTimeout(resolve, 6500)); // 1.5s for spin + 5s delay before fadeOut
       } finally {
         isRefreshing = false;
         indicator.classList.remove('refreshing', 'ready');
