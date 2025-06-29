@@ -22,7 +22,7 @@ function calculateResistance(distance: number): number {
   }
   const excess = distance - THRESHOLD;
   const resistanceFactor = 0.3; // How much resistance to apply
-  return THRESHOLD + (excess * resistanceFactor);
+  return THRESHOLD + excess * resistanceFactor;
 }
 
 // Smooth animation frame-based updates
@@ -42,21 +42,21 @@ function updateIndicator(indicator: HTMLDivElement, distance: number, force = fa
   indicator.style.transform = `translateY(${transformY}px)`;
   indicator.style.opacity = Math.min(progress * 1.2, 1).toString();
 
-  const spinner = indicator.querySelector('.pull-refresh-spinner') as HTMLElement;
+  const spinner = indicator.querySelector(".pull-refresh-spinner") as HTMLElement;
   if (spinner && !isRefreshing) {
     spinner.style.transform = `rotate(${rotation}deg) scale(${0.8 + progress * 0.4})`;
   }
 
   // Update classes for visual feedback
-  if (distance > THRESHOLD && !indicator.classList.contains('ready')) {
-    indicator.classList.add('ready');
+  if (distance > THRESHOLD && !indicator.classList.contains("ready")) {
+    indicator.classList.add("ready");
     // Add subtle haptic feedback through animation
-    indicator.style.animation = 'pullReadyPulse 0.2s ease-out';
+    indicator.style.animation = "pullReadyPulse 0.2s ease-out";
     setTimeout(() => {
-      indicator.style.animation = '';
+      indicator.style.animation = "";
     }, 200);
-  } else if (distance <= THRESHOLD && indicator.classList.contains('ready')) {
-    indicator.classList.remove('ready');
+  } else if (distance <= THRESHOLD && indicator.classList.contains("ready")) {
+    indicator.classList.remove("ready");
   }
 }
 
@@ -64,20 +64,20 @@ function resetIndicator(indicator: HTMLDivElement) {
   scrollDistance = 0;
 
   // Smooth reset animation
-  indicator.style.transition = 'all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+  indicator.style.transition = "all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
   indicator.style.transform = "translateY(-100%)";
   indicator.style.opacity = "0";
 
-  const spinner = indicator.querySelector('.pull-refresh-spinner') as HTMLElement;
+  const spinner = indicator.querySelector(".pull-refresh-spinner") as HTMLElement;
   if (spinner) {
-    spinner.style.transform = 'rotate(0deg) scale(0.8)';
+    spinner.style.transform = "rotate(0deg) scale(0.8)";
   }
 
   indicator.classList.remove("refreshing", "ready");
 
   // Remove transition after animation completes
   setTimeout(() => {
-    indicator.style.transition = '';
+    indicator.style.transition = "";
   }, 300);
 }
 

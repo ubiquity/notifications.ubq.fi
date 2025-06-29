@@ -231,11 +231,11 @@ function setUpIssueElement(
       await removeNotificationFromCache(notificationId);
 
       // Remove the notification element from the UI with animation
-      const notificationElement = issueElement.closest('div');
+      const notificationElement = issueElement.closest("div");
       if (notificationElement) {
-        notificationElement.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
-        notificationElement.style.opacity = '0';
-        notificationElement.style.transform = 'translateX(-100%)';
+        notificationElement.style.transition = "opacity 0.3s ease-out, transform 0.3s ease-out";
+        notificationElement.style.opacity = "0";
+        notificationElement.style.transform = "translateX(-100%)";
 
         setTimeout(() => {
           notificationElement.remove();

@@ -60,7 +60,7 @@ export function clearNotificationsCache() {
 // Function to remove a specific notification from cache and force refresh
 export async function removeNotificationFromCache(notificationId: string) {
   if (notifications) {
-    notifications = notifications.filter(n => n.notification.id.toString() !== notificationId);
+    notifications = notifications.filter((n) => n.notification.id.toString() !== notificationId);
   }
 }
 
