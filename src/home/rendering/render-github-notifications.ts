@@ -2,7 +2,7 @@ import { Octokit } from "@octokit/rest";
 import { organizationImageCache } from "../fetch-github/fetch-data";
 import { getGitHubAccessToken } from "../getters/get-github-access-token";
 import { GitHubAggregated } from "../github-types";
-import { notificationsContainer, shouldShowBotNotifications } from "../home";
+import { notificationsContainer, shouldShowBotNotifications, removeNotificationFromCache } from "../home";
 import { getTimeAgo } from "./utils";
 
 export async function renderNotifications(notifications: GitHubAggregated[], skipAnimation: boolean) {
@@ -218,13 +218,34 @@ function setUpIssueElement(
   issueElement.addEventListener("click", async () => {
     window.open(commentData.url, "_blank");
     try {
-      // Only mark as read when clicked, don't delete
+      // Mark as read via GitHub API
       await octokit.request("PATCH /notifications/threads/{thread_id}", {
         thread_id: Number(notification.notification.id),
         headers: {
           "X-GitHub-Api-Version": "2022-11-28",
         },
       });
+
+      // Immediately remove from cache and UI
+      const notificationId = notification.notification.id.toString();
+      await removeNotificationFromCache(notificationId);
+
+      // Remove the notification element from the UI with animation
+      const notificationElement = issueElement.closest('div');
+      if (notificationElement) {
+        notificationElement.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
+        notificationElement.style.opacity = '0';
+        notificationElement.style.transform = 'translateX(-100%)';
+
+        setTimeout(() => {
+          notificationElement.remove();
+
+          // Check if container is empty and show empty message if needed
+          if (notificationsContainer.children.length === 0) {
+            renderEmpty().catch(console.error);
+          }
+        }, 300);
+      }
     } catch (error) {
       console.error("Failed to mark notification as read:", error);
     }

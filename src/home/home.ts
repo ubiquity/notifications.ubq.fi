@@ -52,8 +52,26 @@ export async function getNotifications() {
   return notifications;
 }
 
+// Function to clear the notifications cache
+export function clearNotificationsCache() {
+  notifications = undefined;
+}
+
+// Function to remove a specific notification from cache and force refresh
+export async function removeNotificationFromCache(notificationId: string) {
+  if (notifications) {
+    notifications = notifications.filter(n => n.notification.id.toString() !== notificationId);
+  }
+}
+
+// Function to force fresh notifications fetch
+export async function forceFreshNotifications() {
+  clearNotificationsCache();
+  return await getNotifications();
+}
+
 async function refreshNotifications() {
-  notifications = undefined; // Clear cache
+  clearNotificationsCache(); // Clear cache
   const newNotifications = await fetchAllNotifications();
   if (newNotifications) {
     await fetchAvatars(newNotifications);

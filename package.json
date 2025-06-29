@@ -1,5 +1,5 @@
 {
-  "name": "@ubiquity/nofications.ubq.fi",
+  "name": "@ubiquity/notifications.ubq.fi",
   "version": "1.0.0",
   "description": "The GitHub notifications viewer for UbiquityOS.",
   "main": "build/index.ts",
@@ -18,7 +18,8 @@
     "knip": "knip --config .github/knip.ts",
     "knip-ci": "knip --no-exit-code --reporter json --config .github/knip.ts",
     "prepare": "husky install",
-    "test": "jest --setupFiles dotenv/config --coverage"
+    "test": "jest --setupFiles dotenv/config --coverage",
+    "brave": "/Applications/Brave\\ Browser.app/Contents/MacOS/Brave\\ Browser --remote-debugging-port=9222"
   },
   "keywords": [
     "typescript",

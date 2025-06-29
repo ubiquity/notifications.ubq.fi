@@ -121,50 +121,103 @@
   top: 48px;
   left: 0;
   right: 0;
-  height: 50px;
+  height: 60px;
   display: flex;
   align-items: center;
   justify-content: center;
   transform: translateY(-100%);
-  transition: transform 0.2s ease-out;
   z-index: 1000;
   pointer-events: none;
+  will-change: transform, opacity;
 }
-.pull-refresh-spinner {
-  width: 48px;
-  height: 48px;
-  border: 4px solid #ffffff40;
-  border-top: 4px solid #fff;
-  border-radius: 50%;
+
+.pull-refresh-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.pull-refresh-text {
+  font-size: 14px;
+  font-weight: 500;
+  opacity: 0.8;
+  transition: opacity 0.3s ease;
+}
+
+.pull-refresh-indicator.ready .pull-refresh-text {
   opacity: 1;
-  transition: 0.5s all ease-in-out;
+}
+
+.pull-refresh-spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  opacity: 0.8;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   animation: none;
   pointer-events: none;
+  will-change: transform;
 }
-.pull-refresh-indicator .pull-refresh-spinner {
-  animation: spin 1.5s cubic-bezier(1, 0, 1, 1) infinite alternate;
+
+.pull-refresh-indicator.ready .pull-refresh-spinner {
+  opacity: 1;
+  border-width: 3px;
 }
+
+.pull-refresh-indicator.refreshing .pull-refresh-spinner {
+  animation: spin 1s linear infinite;
+  border-top: 3px solid currentColor;
+  border-right: 3px solid transparent;
+  border-bottom: 3px solid transparent;
+  border-left: 3px solid transparent;
+}
+/* Pull-to-refresh theming */
 @media (prefers-color-scheme: light) {
+  .pull-refresh-indicator {
+    color: #333;
+  }
+  .pull-refresh-text {
+    color: #666;
+  }
   .pull-refresh-indicator.refreshing .pull-refresh-spinner {
     filter: blur(0);
   }
 }
+
 @media (prefers-color-scheme: dark) {
+  .pull-refresh-indicator {
+    color: #fff;
+  }
+  .pull-refresh-text {
+    color: #ccc;
+  }
   .pull-refresh-indicator.refreshing .pull-refresh-spinner {
     filter: blur(0) drop-shadow(0 0 8px #fff);
   }
 }
+
+/* Animations */
 @keyframes spin {
   0% {
-    transform: rotate(0);
-  }
-  75% {
-    transform: rotate(5400deg);
-    border-bottom-color: #fff;
+    transform: rotate(0deg);
   }
   100% {
-    transform: rotate(7200deg);
-    border-color: #fff;
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pullReadyPulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
   }
 }
 @keyframes fadeOut {
