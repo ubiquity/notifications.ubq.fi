@@ -43,7 +43,18 @@ jobs:
       # Type checking omitted to match previous CI behavior
 
       - name: Test (with JUnit + coverage)
-        run: bun test
+        shell: bash
+        run: |
+          shopt -s globstar nullglob
+          tests=(**/*.{test,spec}.{ts,tsx,js,jsx})
+          if [ ${#tests[@]} -gt 0 ]; then
+            echo "Found ${#tests[@]} test files; running bun test"
+            bun test
+          else
+            echo "No test files found; skipping bun test"
+            # create a minimal junit so downstream steps have artifacts
+            echo '<testsuite name="empty" tests="0"/>' > junit.xml
+          fi
 
       - name: Ensure test artifacts exist
         if: always()
