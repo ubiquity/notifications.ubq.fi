@@ -39,7 +39,7 @@ jobs:
         run: |
           bunx eslint . --max-warnings=0
           bunx prettier --check .
-          bunx cspell "test/**/*.ts" "tests/**/*.ts"
+          bunx cspell --config .cspell.json "test/**/*.ts" "tests/**/*.ts"
 
       # Type checking omitted to match previous CI behavior
 
