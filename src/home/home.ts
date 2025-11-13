@@ -9,7 +9,7 @@ import { renderServiceMessage } from "./render-service-message";
 import { renderErrorInModal } from "./rendering/display-popup-modal";
 import { renderGitRevision } from "./rendering/render-github-login-button";
 import { generateSortingToolbar } from "./sorting/generate-sorting-buttons";
-import { getNotificationsFromCache, clearNotificationsCache } from "./getters/get-indexed-db";
+import { getNotificationsFromCache, clearNotificationsCache, isNotificationsCacheValid } from "./getters/get-indexed-db";
 
 import { setupAuth } from "./auth-config";
 
@@ -48,14 +48,13 @@ let notifications: Awaited<ReturnType<typeof fetchAllNotifications>> | undefined
 // This is made to make notifications global
 export async function getNotifications() {
   if (!notifications) {
-    const cached = await getNotificationsFromCache();
-    if (cached && cached.length > 0) {
+    const [cached, cacheValid] = await Promise.all([
+      getNotificationsFromCache(),
+      isNotificationsCacheValid(),
+    ]);
+    if (cacheValid) {
       const [pullRequests, issues] = await Promise.all([fetchPullRequests(), fetchIssues()]);
-      if (pullRequests && issues) {
-        notifications = await processNotifications(cached, pullRequests, issues);
-      } else {
-        notifications = await fetchAllNotifications();
-      }
+      notifications = pullRequests && issues ? await processNotifications(cached, pullRequests, issues) : await fetchAllNotifications();
     } else {
       notifications = await fetchAllNotifications();
     }

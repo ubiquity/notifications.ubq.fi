@@ -1,5 +1,11 @@
 import { GitHubNotifications, GitHubNotification } from "../github-types";
 
+// Represents a cached notification record stored in IndexedDB
+interface CachedNotificationDB extends GitHubNotification {
+  cachedAt: number;
+  expiresAt: number;
+}
+
 // this file contains functions to save and retrieve issues/images from IndexedDB which is client-side in-browser storage
 export async function saveImageToCache({
   dbName,
@@ -111,6 +117,11 @@ export async function saveNotificationsToCache(cachedNotifications: GitHubNotifi
     store.put(item);
   }
 
+  // Write/update a sentinel meta record to track cache freshness even when there are zero notifications
+  const meta = { id: -1, cachedAt: now, expiresAt: now + ttl } as unknown as CachedNotificationDB;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (store as any).put(meta);
+
   return new Promise((resolve, reject) => {
     transaction.oncomplete = () => resolve();
     transaction.onerror = (event) => reject((event.target as IDBTransaction).error);
@@ -128,9 +139,11 @@ export async function getNotificationsFromCache(): Promise<GitHubNotifications> 
 
     request.onsuccess = () => {
       const now = Date.now();
-      type CachedNotification = GitHubNotification & { expiresAt: number };
-      const results = (request.result as unknown as CachedNotification[]) || [];
-      const validNotifications = results.filter((item) => item.expiresAt > now) as unknown as GitHubNotifications;
+      const results = (request.result as unknown as Array<CachedNotificationDB | { id: number }>) || [];
+      // Filter out meta record (id === -1) and expired notifications
+      const validNotifications = results
+        .filter((item) => typeof item.id === "number" && item.id !== -1)
+        .filter((item) => (item as CachedNotificationDB).expiresAt ? (item as CachedNotificationDB).expiresAt > now : true) as unknown as GitHubNotifications;
       resolve(validNotifications);
     };
     request.onerror = () => reject(request.error);
@@ -148,5 +161,22 @@ export async function clearNotificationsCache(): Promise<void> {
 
     request.onsuccess = () => resolve();
     request.onerror = () => reject(request.error);
+  });
+}
+
+// Returns whether the notifications cache is still within TTL window
+export async function isNotificationsCacheValid(): Promise<boolean> {
+  const db = await openNotificationsDB();
+  const transaction = db.transaction("notifications", "readonly");
+  const store = transaction.objectStore("notifications");
+
+  return new Promise((resolve) => {
+    const metaReq = store.get(-1);
+    metaReq.onsuccess = () => {
+      const meta = metaReq.result as unknown as CachedNotificationDB | undefined;
+      if (!meta || !meta.expiresAt) return resolve(false);
+      resolve(meta.expiresAt > Date.now());
+    };
+    metaReq.onerror = () => resolve(false);
   });
 }

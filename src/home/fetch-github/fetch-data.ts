@@ -33,6 +33,8 @@ async function fetchNotifications(): Promise<GitHubNotifications | null> {
 
 export async function fetchIssues(): Promise<GitHubIssue[]> {
   try {
+    // BREAKING CHANGE: endpoint switched from 'devpool-issues.json' to 'partner-open-issues.json'
+    // Reason: aligns with new partner-based data model and naming.
     const response = await fetch("https://raw.githubusercontent.com/ubiquity/devpool-directory/__STORAGE__/partner-open-issues.json");
     if (!response.ok) {
       console.warn("Failed to fetch issues:", response.status, response.statusText);
@@ -48,6 +50,8 @@ export async function fetchIssues(): Promise<GitHubIssue[]> {
 
 export async function fetchPullRequests(): Promise<GitHubPullRequest[]> {
   try {
+    // BREAKING CHANGE: endpoint switched from 'devpool-pull-requests.json' to 'partner-pull-requests.json'
+    // Reason: aligns with new partner-based data model and naming.
     const response = await fetch("https://raw.githubusercontent.com/ubiquity/devpool-directory/__STORAGE__/partner-pull-requests.json");
     if (!response.ok) {
       console.warn("Failed to fetch pull requests:", response.status, response.statusText);
@@ -258,7 +262,7 @@ function countBacklinks(aggregated: GitHubAggregated, allPullRequests: GitHubPul
 
   // check backlinks in issues
   for (const issue of allIssues) {
-    const source = (issue as any).repository_url || (issue as any).html_url || (issue as any).url || "";
+    const source = getIssueRepositorySource(issue);
     let issueOwner: string | undefined;
     let issueRepo: string | undefined;
     if (source.includes("github.com")) {
@@ -302,7 +306,7 @@ function getDevpoolRepos(pullRequests: GitHubPullRequest[], issues: GitHubIssue[
   }
 
   for (const issue of issues) {
-    const source = (issue as any).repository_url || (issue as any).html_url || (issue as any).url || "";
+    const source = getIssueRepositorySource(issue);
     let issueOwner: string | undefined;
     let issueRepo: string | undefined;
     if (source.includes("github.com")) {
@@ -325,6 +329,16 @@ function getDevpoolRepos(pullRequests: GitHubPullRequest[], issues: GitHubIssue[
     if (issueOwner && issueRepo) uniqueNames.add(`${issueOwner}/${issueRepo}`);
   }
   return uniqueNames;
+}
+
+// Helper: best-effort extraction of repository URL-ish source from an issue
+function getIssueRepositorySource(issue: GitHubIssue): string {
+  // Prefer API repository URL when available, then html_url, then url
+  // Some fields can be undefined depending on the request shape/mocks
+  // Access safely with optional chaining and fallback to empty string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const anyIssue = issue as any;
+  return anyIssue?.repository_url || anyIssue?.html_url || anyIssue?.url || "";
 }
 
 // Process notifications into aggregated data

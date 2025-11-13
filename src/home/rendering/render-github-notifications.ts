@@ -42,29 +42,28 @@ export async function renderNotifications(notifications: GitHubAggregated[], ski
   }
 
   // Set up auto-mark on view
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(async (entry) => {
-      if (entry.isIntersecting) {
-        const issueElement = entry.target as HTMLElement;
-        const id = issueElement.getAttribute('data-issue-id');
-        if (id && !viewedNotifications.has(id)) {
-          viewedNotifications.add(id);
-          setLocalStore('viewed-notifications', Array.from(viewedNotifications));
-          const octokit = new Octokit({ auth: providerToken });
-          try {
-            await octokit.request("PATCH /notifications/threads/{thread_id}", {
-              thread_id: Number(id),
-              headers: { "X-GitHub-Api-Version": "2022-11-28" },
-            });
-            // Remove the notification from UI
-            issueElement.closest('.issue-element-inner')?.remove();
-          } catch (error) {
-            console.error("Failed to mark notification as read on view:", error);
-          }
+  const observer = new IntersectionObserver(async (entries) => {
+    for (const entry of entries) {
+      if (!entry.isIntersecting) continue;
+      const issueElement = entry.target as HTMLElement;
+      const id = issueElement.getAttribute('data-issue-id');
+      if (id && !viewedNotifications.has(id)) {
+        viewedNotifications.add(id);
+        setLocalStore('viewed-notifications', Array.from(viewedNotifications));
+        const octokit = new Octokit({ auth: providerToken });
+        try {
+          await octokit.request("PATCH /notifications/threads/{thread_id}", {
+            thread_id: Number(id),
+            headers: { "X-GitHub-Api-Version": "2022-11-28" },
+          });
+          // Remove the notification from UI
+          issueElement.remove();
+        } catch (error) {
+          console.error("Failed to mark notification as read on view:", error);
         }
-        observer.unobserve(entry.target);
       }
-    });
+      observer.unobserve(entry.target);
+    }
   }, { threshold: 0.5 });
 
   // Observe new notifications
