@@ -1,8 +1,9 @@
 import { RequestError } from "@octokit/request-error";
 import { Octokit } from "@octokit/rest";
 import { getGitHubAccessToken } from "../getters/get-github-access-token";
-import { GitHubAggregated, GitHubIssue, GitHubNotification, GitHubNotifications, GitHubPullRequest } from "../github-types";
+import { GitHubAggregated, GitHubIssue, GitHubLabel, GitHubNotification, GitHubNotifications, GitHubPullRequest } from "../github-types";
 import { handleRateLimit } from "./handle-rate-limit";
+import { saveNotificationsToCache } from "../getters/get-indexed-db";
 
 export const organizationImageCache = new Map<string, Blob | null>(); // this should be declared in image related script
 
@@ -31,15 +32,33 @@ async function fetchNotifications(): Promise<GitHubNotifications | null> {
 }
 
 export async function fetchIssues(): Promise<GitHubIssue[]> {
-  const response = await fetch("https://raw.githubusercontent.com/ubiquity/devpool-directory/__STORAGE__/devpool-issues.json");
-  const jsonData = await response.json();
-  return jsonData;
+  try {
+    const response = await fetch("https://raw.githubusercontent.com/ubiquity/devpool-directory/__STORAGE__/partner-open-issues.json");
+    if (!response.ok) {
+      console.warn("Failed to fetch issues:", response.status, response.statusText);
+      return [];
+    }
+    const jsonData: GitHubIssue[] = await response.json();
+    return jsonData;
+  } catch (error) {
+    console.warn("Error fetching issues:", error);
+    return [];
+  }
 }
 
 export async function fetchPullRequests(): Promise<GitHubPullRequest[]> {
-  const response = await fetch("https://raw.githubusercontent.com/ubiquity/devpool-directory/__STORAGE__/devpool-pull-requests.json");
-  const jsonData = await response.json();
-  return jsonData;
+  try {
+    const response = await fetch("https://raw.githubusercontent.com/ubiquity/devpool-directory/__STORAGE__/partner-pull-requests.json");
+    if (!response.ok) {
+      console.warn("Failed to fetch pull requests:", response.status, response.statusText);
+      return [];
+    }
+    const jsonData: GitHubPullRequest[] = await response.json();
+    return jsonData;
+  } catch (error) {
+    console.warn("Error fetching pull requests:", error);
+    return [];
+  }
 }
 
 // Pre-filter notifications by general rules (repo filtering and ignoring CI activity)
@@ -67,12 +86,12 @@ function preFilterNotifications(devpoolRepos: Set<string>, notifications: GitHub
 
 // Function to filter pull request notifications
 function filterPullRequestNotifications(devpoolRepos: Set<string>, notifications: GitHubNotification[]): GitHubNotifications {
-  return preFilterNotifications(devpoolRepos, notifications).filter((notification) => notification.subject.type === "PullRequest");
+  return preFilterNotifications(devpoolRepos, notifications).filter((notification: GitHubNotification) => notification.subject.type === "PullRequest");
 }
 
 // Function to filter issue notifications
 function filterIssueNotifications(devpoolRepos: Set<string>, notifications: GitHubNotification[]): GitHubNotifications {
-  return preFilterNotifications(devpoolRepos, notifications).filter((notification) => notification.subject.type === "Issue");
+  return preFilterNotifications(devpoolRepos, notifications).filter((notification: GitHubNotification) => notification.subject.type === "Issue");
 }
 
 async function fetchIssueFromPullRequest(pullRequest: GitHubPullRequest, issues: GitHubIssue[]): Promise<GitHubIssue | null> {
@@ -173,11 +192,24 @@ function countBacklinks(aggregated: GitHubAggregated, allPullRequests: GitHubPul
     issueUrl = url;
     [ownerName, repoName] = repository_url.split("/").slice(-2);
   } else if (aggregated.notification.subject.type === "PullRequest" && aggregated.pullRequest) {
-    const { url, base } = aggregated.pullRequest;
-    prUrl = url;
+    const pr = aggregated.pullRequest;
+    prUrl = pr.url;
     issueNumber = aggregated.issue?.number || null;
     issueUrl = aggregated.issue?.url || null;
-    [ownerName, repoName] = base.repo.url.split("/").slice(-2);
+    const baseRepoUrl = pr.base?.repo?.url;
+    if (baseRepoUrl) {
+      [ownerName, repoName] = baseRepoUrl.split("/").slice(-2);
+    } else if (aggregated.issue?.repository_url) {
+      [ownerName, repoName] = aggregated.issue.repository_url.split("/").slice(-2);
+    } else {
+      const match = pr.url.match(/repos\/(.+?)\/(.+?)\//);
+      if (match) {
+        ownerName = match[1];
+        repoName = match[2];
+      } else {
+        return 0; // unable to determine repo context safely
+      }
+    }
   } else {
     return 0; // unsupported type
   }
@@ -207,13 +239,46 @@ function countBacklinks(aggregated: GitHubAggregated, allPullRequests: GitHubPul
 
   // check backlinks in pull requests
   for (const pr of allPullRequests) {
-    const [prOwner, prRepo] = pr.base.repo.url.split("/").slice(-2);
-    totalCount += countMatches(pr.body, prRepo, prOwner);
+    const baseRepoUrl = pr.base?.repo?.url;
+    let prOwner: string | undefined;
+    let prRepo: string | undefined;
+    if (baseRepoUrl) {
+      [prOwner, prRepo] = baseRepoUrl.split("/").slice(-2);
+    } else {
+      const match = pr.url.match(/repos\/(.+?)\/(.+?)\//);
+      if (match) {
+        prOwner = match[1];
+        prRepo = match[2];
+      }
+    }
+    if (prOwner && prRepo) {
+      totalCount += countMatches(pr.body, prRepo, prOwner);
+    }
   }
 
   // check backlinks in issues
   for (const issue of allIssues) {
-    const [issueOwner, issueRepo] = issue.repository_url.split("/").slice(-2);
+    const source = (issue as any).repository_url || (issue as any).html_url || (issue as any).url || "";
+    let issueOwner: string | undefined;
+    let issueRepo: string | undefined;
+    if (source.includes("github.com")) {
+      const m = source.match(/github\.com\/(.+?)\/(.+?)\//);
+      if (m) {
+        issueOwner = m[1];
+        issueRepo = m[2];
+      }
+    } else if (source.includes("api.github.com")) {
+      const m = source.match(/repos\/(.+?)\/(.+?)\//);
+      if (m) {
+        issueOwner = m[1];
+        issueRepo = m[2];
+      }
+    } else if (source) {
+      const parts = source.split("/");
+      issueOwner = parts[parts.length - 2];
+      issueRepo = parts[parts.length - 1];
+    }
+    if (!issueOwner || !issueRepo) continue;
     totalCount += countMatches(issue.body ?? null, issueRepo, issueOwner);
   }
 
@@ -224,23 +289,46 @@ function getDevpoolRepos(pullRequests: GitHubPullRequest[], issues: GitHubIssue[
   const uniqueNames = new Set<string>();
 
   for (const pullRequest of pullRequests) {
-    const [ownerName, repoName] = pullRequest.base.repo.url.split("/").slice(-2);
-    uniqueNames.add(`${ownerName}/${repoName}`);
+    const baseRepoUrl = pullRequest.base?.repo?.url;
+    if (baseRepoUrl) {
+      const [ownerName, repoName] = baseRepoUrl.split("/").slice(-2);
+      uniqueNames.add(`${ownerName}/${repoName}`);
+    } else {
+      const match = pullRequest.url.match(/repos\/(.+?)\/(.+?)\//);
+      if (match) {
+        uniqueNames.add(`${match[1]}/${match[2]}`);
+      }
+    }
   }
 
   for (const issue of issues) {
-    const [issueOwner, issueRepo] = issue.repository_url.split("/").slice(-2);
-    uniqueNames.add(`${issueOwner}/${issueRepo}`);
+    const source = (issue as any).repository_url || (issue as any).html_url || (issue as any).url || "";
+    let issueOwner: string | undefined;
+    let issueRepo: string | undefined;
+    if (source.includes("github.com")) {
+      const m = source.match(/github\.com\/(.+?)\/(.+?)\//);
+      if (m) {
+        issueOwner = m[1];
+        issueRepo = m[2];
+      }
+    } else if (source.includes("api.github.com")) {
+      const m = source.match(/repos\/(.+?)\/(.+?)\//);
+      if (m) {
+        issueOwner = m[1];
+        issueRepo = m[2];
+      }
+    } else if (source) {
+      const parts = source.split("/");
+      issueOwner = parts[parts.length - 2];
+      issueRepo = parts[parts.length - 1];
+    }
+    if (issueOwner && issueRepo) uniqueNames.add(`${issueOwner}/${issueRepo}`);
   }
   return uniqueNames;
 }
 
-// Fetch all notifications and return them as an array of aggregated data
-export async function fetchAllNotifications(): Promise<GitHubAggregated[] | null> {
-  // fetches all notifications, pull requests and issues in parallel
-  const [notifications, pullRequests, issues] = await Promise.all([fetchNotifications(), fetchPullRequests(), fetchIssues()]);
-  if (!notifications || !pullRequests || !issues) return null;
-
+// Process notifications into aggregated data
+export async function processNotifications(notifications: GitHubNotifications, pullRequests: GitHubPullRequest[], issues: GitHubIssue[]): Promise<GitHubAggregated[] | null> {
   const devpoolRepos = getDevpoolRepos(pullRequests, issues);
   console.log("devpoolRepos: ", devpoolRepos);
 
@@ -261,7 +349,7 @@ export async function fetchAllNotifications(): Promise<GitHubAggregated[] | null
       return false;
     }
 
-    const isSuccess = aggregated.issue.labels.some((label) => {
+    const isSuccess = aggregated.issue.labels.some((label: GitHubLabel) => {
       if (typeof label === "string" || !label.name) {
         return false;
       }
@@ -288,4 +376,16 @@ export async function fetchAllNotifications(): Promise<GitHubAggregated[] | null
 
   console.log("filteredNotifications", filteredNotifications);
   return filteredNotifications;
+}
+
+// Fetch all notifications and return them as an array of aggregated data
+export async function fetchAllNotifications(): Promise<GitHubAggregated[] | null> {
+  // fetches all notifications, pull requests and issues in parallel
+  const [notifications, pullRequests, issues] = await Promise.all([fetchNotifications(), fetchPullRequests(), fetchIssues()]);
+  if (!notifications || !pullRequests || !issues) return null;
+
+  // Save fetched notifications to IndexedDB cache
+  await saveNotificationsToCache([], notifications);
+
+  return processNotifications(notifications, pullRequests, issues);
 }

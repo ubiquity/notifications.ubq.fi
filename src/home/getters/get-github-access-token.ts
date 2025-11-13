@@ -23,7 +23,7 @@ export async function getGitHubAccessToken(): Promise<string | null> {
 }
 
 export function getGitHubUserName(): string | null {
-  const oauthToken = getLocalStore(`sb-${SUPABASE_STORAGE_KEY}-auth-token`) as OAuthToken | null;
+  const oauthToken = getLocalStore<OAuthToken>(`sb-${SUPABASE_STORAGE_KEY}-auth-token`);
 
   const username = oauthToken?.user?.user_metadata?.user_name;
   if (username) {

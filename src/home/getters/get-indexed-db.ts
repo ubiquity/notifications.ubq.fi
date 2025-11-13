@@ -1,4 +1,4 @@
-import { GitHubNotifications } from "../github-types";
+import { GitHubNotifications, GitHubNotification } from "../github-types";
 
 // this file contains functions to save and retrieve issues/images from IndexedDB which is client-side in-browser storage
 export async function saveImageToCache({
@@ -72,14 +72,14 @@ export function getImageFromCache({ dbName, storeName, orgName }: { dbName: stri
   });
 }
 
-async function openIssuesDB(): Promise<IDBDatabase> {
+async function openNotificationsDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open("IssuesDB", 2);
+    const request = indexedDB.open("NotificationsDB", 1);
 
     request.onupgradeneeded = (event) => {
       const db = (event.target as IDBOpenDBRequest).result;
-      if (!db.objectStoreNames.contains("issues")) {
-        db.createObjectStore("issues", { keyPath: "id" });
+      if (!db.objectStoreNames.contains("notifications")) {
+        db.createObjectStore("notifications", { keyPath: "id" });
       }
     };
 
@@ -87,21 +87,28 @@ async function openIssuesDB(): Promise<IDBDatabase> {
     request.onerror = () => reject(request.error);
   });
 }
-// Saves fetched issues into IndexedDB and removes stale issues
-export async function saveIssuesToCache(cachedIssues: GitHubNotifications, fetchedNotifications: GitHubNotifications): Promise<void> {
-  const db = await openIssuesDB();
-  const transaction = db.transaction("issues", "readwrite");
-  const store = transaction.objectStore("issues");
+// Saves fetched notifications into IndexedDB with TTL and removes stale notifications
+export async function saveNotificationsToCache(cachedNotifications: GitHubNotifications, fetchedNotifications: GitHubNotifications): Promise<void> {
+  const db = await openNotificationsDB();
+  const transaction = db.transaction("notifications", "readwrite");
+  const store = transaction.objectStore("notifications");
 
-  // Identify and remove stale issues (in cache but not in fetched list)
-  const staleIssues = cachedIssues.filter((cachedIssue) => !fetchedNotifications.some((issue) => issue.id === cachedIssue.id));
-  for (const issue of staleIssues) {
-    store.delete(issue.id);
+  // Identify and remove stale notifications (in cache but not in fetched list)
+  const staleNotifications = cachedNotifications.filter((cachedNotification: GitHubNotification) => !fetchedNotifications.some((notification: GitHubNotification) => notification.id === cachedNotification.id));
+  for (const notification of staleNotifications) {
+    store.delete(notification.id);
   }
 
-  // Save or update fetched issues
-  for (const issue of fetchedNotifications) {
-    store.put(issue);
+  // Save or update fetched notifications with TTL timestamp
+  const now = Date.now();
+  const ttl = 60 * 60 * 1000; // 1 hour in milliseconds
+  for (const notification of fetchedNotifications) {
+    const item = {
+      ...notification,
+      cachedAt: now,
+      expiresAt: now + ttl,
+    };
+    store.put(item);
   }
 
   return new Promise((resolve, reject) => {
@@ -110,16 +117,36 @@ export async function saveIssuesToCache(cachedIssues: GitHubNotifications, fetch
   });
 }
 
-// Retrieves issues from IndexedDB
-export async function getIssuesFromCache(): Promise<GitHubNotifications> {
-  const db = await openIssuesDB();
-  const transaction = db.transaction("issues", "readonly");
-  const store = transaction.objectStore("issues");
+// Retrieves notifications from IndexedDB, filtering out expired ones
+export async function getNotificationsFromCache(): Promise<GitHubNotifications> {
+  const db = await openNotificationsDB();
+  const transaction = db.transaction("notifications", "readonly");
+  const store = transaction.objectStore("notifications");
 
   return new Promise((resolve, reject) => {
     const request = store.getAll();
 
-    request.onsuccess = () => resolve(request.result || []);
+    request.onsuccess = () => {
+      const now = Date.now();
+      type CachedNotification = GitHubNotification & { expiresAt: number };
+      const results = (request.result as unknown as CachedNotification[]) || [];
+      const validNotifications = results.filter((item) => item.expiresAt > now) as unknown as GitHubNotifications;
+      resolve(validNotifications);
+    };
+    request.onerror = () => reject(request.error);
+  });
+}
+
+// Clears all notifications from IndexedDB cache
+export async function clearNotificationsCache(): Promise<void> {
+  const db = await openNotificationsDB();
+  const transaction = db.transaction("notifications", "readwrite");
+  const store = transaction.objectStore("notifications");
+
+  return new Promise((resolve, reject) => {
+    const request = store.clear();
+
+    request.onsuccess = () => resolve();
     request.onerror = () => reject(request.error);
   });
 }

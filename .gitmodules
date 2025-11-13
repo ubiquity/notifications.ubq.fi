@@ -1,0 +1,4 @@
+[submodule "lib/devpool-directory"]
+	path = lib/devpool-directory
+	url = https://github.com/ubiquity/devpool-directory.git
+	branch = __STORAGE__

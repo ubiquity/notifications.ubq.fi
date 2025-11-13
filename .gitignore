@@ -15,3 +15,5 @@ static/dist
 
 # vscode
 .vscode
+coverage/
+test-dashboard.md

@@ -1,4 +1,4 @@
-const cacheName = "pwacache-v4"; // Increment this when files change
+const cacheName = "pwacache-v5"; // Increment this when files change
 const urlsToCache = [
   "/",
   "/index.html",
@@ -49,12 +49,41 @@ self.addEventListener("activate", async (event) => {
   );
 });
 
-// Fetch event: Cache first approach but update cache anyway
+// Fetch event: Cache first for static assets, network first for API
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
 
   // Ignore non-HTTP(S) requests (like 'chrome-extension://')
   if (url.protocol !== "http:" && url.protocol !== "https:") return;
+
+  // Network-first for GitHub API
+  if (url.hostname === "api.github.com") {
+    event.respondWith(
+      (async () => {
+        try {
+          const networkResponse = await fetch(event.request);
+          if (networkResponse.ok) {
+            const responseClone = networkResponse.clone();
+            const cache = await caches.open(cacheName);
+            await cache.put(event.request, responseClone);
+          }
+          return networkResponse;
+        } catch (error) {
+          console.log("[Service Worker] Network failed, trying cache for API:", event.request.url);
+          const cachedResponse = await caches.match(event.request);
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+          console.error("[Service Worker] API fetch failed and no cache available:", error);
+          return new Response("Network error", {
+            status: 503,
+            statusText: "Service Unavailable",
+          });
+        }
+      })()
+    );
+    return;
+  }
 
   // If the request has query parameters, bypass the cache
   if (url.search) {
@@ -62,13 +91,13 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // Cache-first for static assets
   event.respondWith(
     (async () => {
       const cachedResponse = await caches.match(event.request);
 
       if (cachedResponse) {
-        // Start a network fetch in the background to update the cache, this will return early from cache
-        // but the fetch will still happen in the background
+        // Start a network fetch in the background to update the cache
         event.waitUntil(
           (async () => {
             try {

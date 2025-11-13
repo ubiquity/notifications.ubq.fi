@@ -1,9 +1,13 @@
 import { Octokit } from "@octokit/rest";
 import { organizationImageCache } from "../fetch-github/fetch-data";
 import { getGitHubAccessToken } from "../getters/get-github-access-token";
-import { GitHubAggregated } from "../github-types";
+import { getLocalStore, setLocalStore } from "../getters/get-local-store";
+import { GitHubAggregated, GitHubLabel } from "../github-types";
 import { notificationsContainer, shouldShowBotNotifications } from "../home";
 import { getTimeAgo } from "./utils";
+
+// Track viewed notifications to avoid re-marking
+const viewedNotifications = new Set<string>(getLocalStore<string[]>('viewed-notifications') ?? []);
 
 export async function renderNotifications(notifications: GitHubAggregated[], skipAnimation: boolean) {
   const providerToken = await getGitHubAccessToken();
@@ -13,7 +17,7 @@ export async function renderNotifications(notifications: GitHubAggregated[], ski
     notificationsContainer.innerHTML = "";
   }
   const existingNotificationIds = new Set(
-    Array.from(notificationsContainer.querySelectorAll(".issue-element-inner")).map((element) => element.getAttribute("data-issue-id"))
+    Array.from(notificationsContainer.querySelectorAll(".issue-element-inner")).map((element) => (element as HTMLElement).getAttribute("data-issue-id"))
   );
 
   let delay = 0;
@@ -36,6 +40,40 @@ export async function renderNotifications(notifications: GitHubAggregated[], ski
       }
     }
   }
+
+  // Set up auto-mark on view
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(async (entry) => {
+      if (entry.isIntersecting) {
+        const issueElement = entry.target as HTMLElement;
+        const id = issueElement.getAttribute('data-issue-id');
+        if (id && !viewedNotifications.has(id)) {
+          viewedNotifications.add(id);
+          setLocalStore('viewed-notifications', Array.from(viewedNotifications));
+          const octokit = new Octokit({ auth: providerToken });
+          try {
+            await octokit.request("PATCH /notifications/threads/{thread_id}", {
+              thread_id: Number(id),
+              headers: { "X-GitHub-Api-Version": "2022-11-28" },
+            });
+            // Remove the notification from UI
+            issueElement.closest('.issue-element-inner')?.remove();
+          } catch (error) {
+            console.error("Failed to mark notification as read on view:", error);
+          }
+        }
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.5 });
+
+  // Observe new notifications
+  const newNotifications = notificationsContainer.querySelectorAll('.issue-element-inner:not(.observed)');
+  newNotifications.forEach((el) => {
+    el.classList.add('observed');
+    observer.observe(el);
+  });
+
   notificationsContainer.classList.add("ready");
 
   // Check if notificationsContainer has no children and render empty message if true
@@ -135,7 +173,18 @@ function everyNewNotification({
   issueElement.classList.add("issue-element-inner");
 
   const labels = parseAndGenerateLabels(notification);
-  const [organizationName, repositoryName] = notification.notification.repository.url.split("/").slice(-2);
+  const repoUrl =
+    notification.notification.repository?.url ||
+    notification.issue?.repository_url ||
+    notification.pullRequest?.base?.repo?.url ||
+    "";
+
+  if (!repoUrl) {
+    console.log("skipping ", notification.notification.subject.title, " because of missing repo url");
+    return;
+  }
+
+  const [organizationName, repositoryName] = repoUrl.split("/").slice(-2);
 
   const commentData = commentsMap.get(notification.notification.id.toString());
 
@@ -171,6 +220,11 @@ function setUpIssueElement(
   const octokit = new Octokit({ auth: providerToken });
   const image = `<img class="orgAvatar"/>`;
 
+  const issueNumber =
+    (notification.issue && typeof notification.issue.number !== "undefined" && String(notification.issue.number)) ||
+    (notification.pullRequest && typeof notification.pullRequest.number !== "undefined" && String(notification.pullRequest.number)) ||
+    (notification.notification.subject.url ? String(notification.notification.subject.url.split("/").slice(-1)) : "");
+
   issueElement.innerHTML = `
     <div class="info">
       <div class="notification-icon"></div>
@@ -183,7 +237,7 @@ function setUpIssueElement(
             <p class="organization-name">${organizationName}</p>
             <p class="repository-name">${repositoryName}</p>
           </div>
-          <p class="issue-number">#${notification.notification.subject.url.split("/").slice(-1)}</p>
+          <p class="issue-number">#${issueNumber}</p>
         </div>
       </div>
     </div>
@@ -225,6 +279,9 @@ function setUpIssueElement(
           "X-GitHub-Api-Version": "2022-11-28",
         },
       });
+      // Mark as viewed locally
+      viewedNotifications.add(notification.notification.id.toString());
+      setLocalStore('viewed-notifications', Array.from(viewedNotifications));
     } catch (error) {
       console.error("Failed to mark notification as read:", error);
     }
@@ -248,7 +305,7 @@ async function fetchLatestComments(notifications: GitHubAggregated[]) {
           const response = await fetch(subject.latest_comment_url, {
             headers: { Authorization: `Bearer ${providerToken}` },
           });
-          const data = await response.json();
+          const data: { user: { type: string; avatar_url: string }; html_url: string; body: string } = await response.json();
           userType = data.user.type;
           url = data.html_url;
           avatarUrl = data.user.avatar_url;
@@ -280,7 +337,7 @@ function parseAndGenerateLabels(notification: GitHubAggregated) {
   const labels: string[] = [];
 
   if (notification.issue.labels) {
-    notification.issue.labels.forEach((label) => {
+    notification.issue.labels.forEach((label: GitHubLabel) => {
       if (typeof label === "string") return;
       if (!label.name) return;
 

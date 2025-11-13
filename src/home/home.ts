@@ -1,7 +1,7 @@
 import { grid } from "../the-grid";
 import { authentication } from "./authentication";
 import { fetchAvatars } from "./fetch-github/fetch-avatar";
-import { fetchAllNotifications } from "./fetch-github/fetch-data";
+import { fetchAllNotifications, fetchIssues, fetchPullRequests, processNotifications } from "./fetch-github/fetch-data";
 import { displayNotifications } from "./fetch-github/filter-and-display-notifications";
 import { initPullToRefresh } from "./pull-to-refresh";
 import { readyToolbar } from "./ready-toolbar";
@@ -9,6 +9,7 @@ import { renderServiceMessage } from "./render-service-message";
 import { renderErrorInModal } from "./rendering/display-popup-modal";
 import { renderGitRevision } from "./rendering/render-github-login-button";
 import { generateSortingToolbar } from "./sorting/generate-sorting-buttons";
+import { getNotificationsFromCache, clearNotificationsCache } from "./getters/get-indexed-db";
 
 import { setupAuth } from "./auth-config";
 
@@ -47,13 +48,24 @@ let notifications: Awaited<ReturnType<typeof fetchAllNotifications>> | undefined
 // This is made to make notifications global
 export async function getNotifications() {
   if (!notifications) {
-    notifications = await fetchAllNotifications();
+    const cached = await getNotificationsFromCache();
+    if (cached && cached.length > 0) {
+      const [pullRequests, issues] = await Promise.all([fetchPullRequests(), fetchIssues()]);
+      if (pullRequests && issues) {
+        notifications = await processNotifications(cached, pullRequests, issues);
+      } else {
+        notifications = await fetchAllNotifications();
+      }
+    } else {
+      notifications = await fetchAllNotifications();
+    }
   }
   return notifications;
 }
 
 async function refreshNotifications() {
-  notifications = undefined; // Clear cache
+  notifications = undefined; // Clear in-memory cache
+  await clearNotificationsCache(); // Clear IndexedDB cache
   const newNotifications = await fetchAllNotifications();
   if (newNotifications) {
     await fetchAvatars(newNotifications);

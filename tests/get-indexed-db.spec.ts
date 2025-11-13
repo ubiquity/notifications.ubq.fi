@@ -1,0 +1,61 @@
+import 'fake-indexeddb/auto';
+import { saveNotificationsToCache, getNotificationsFromCache, clearNotificationsCache } from '../src/home/getters/get-indexed-db';
+import { GitHubNotifications } from '../src/home/github-types';
+
+describe('IndexedDB cache functions', () => {
+  beforeEach(async () => {
+    await clearNotificationsCache();
+  });
+
+  it('saves and retrieves notifications with TTL', async () => {
+    const cached: GitHubNotifications = [];
+    const fetched: GitHubNotifications = [
+      {
+        id: '1',
+        reason: 'review_requested',
+        subject: { title: 'Test', url: 'https://api.github.com/repos/owner/repo/pulls/123', type: 'PullRequest' },
+        repository: { full_name: 'owner/repo' },
+        updated_at: '2023-01-01T00:00:00Z'
+      }
+    ];
+
+    await saveNotificationsToCache(cached, fetched);
+    const result = await getNotificationsFromCache();
+    expect(result.length).toBe(1);
+    expect(result[0].id).toBe('1');
+  });
+
+  it('filters out expired items', async () => {
+    // Mock time to make item expired
+    const realNow = Date.now;
+    Date.now = jest.fn(() => realNow() + 2 * 60 * 60 * 1000); // 2 hours later
+
+    const result = await getNotificationsFromCache();
+    expect(result.length).toBe(0);
+
+    Date.now = realNow;
+  });
+
+  it('removes stale notifications', async () => {
+    const cached: GitHubNotifications = [
+      {
+        id: 'old',
+        reason: 'review_requested',
+        subject: { title: 'Old', url: 'https://api.github.com/repos/owner/repo/pulls/456', type: 'PullRequest' },
+        repository: { full_name: 'owner/repo' },
+        updated_at: '2023-01-01T00:00:00Z'
+      }
+    ];
+    const fetched: GitHubNotifications = []; // old one not in fetched
+
+    await saveNotificationsToCache(cached, fetched);
+    const result = await getNotificationsFromCache();
+    expect(result.length).toBe(0);
+  });
+
+  it('clears cache', async () => {
+    await clearNotificationsCache();
+    const result = await getNotificationsFromCache();
+    expect(result.length).toBe(0);
+  });
+});
