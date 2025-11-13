@@ -18,8 +18,6 @@
     "format:cspell": "cspell **/*",
     "format:check": "prettier --check .",
     "lint": "eslint . --max-warnings=0",
-    "knip": "knip --config .github/knip.ts",
-    "knip-ci": "knip --no-exit-code --reporter json --config .github/knip.ts",
     "prepare": "husky install",
     "test": "bun test"
   },
