@@ -1,5 +1,28 @@
 {
   "version": "0.2",
-  "ignorePaths": ["dist"],
-  "words": ["devpool", "octocat", "ratelimit", "supabase", "UBIQUIBOT"]
+  "ignorePaths": [
+    "dist",
+    "build",
+    "lib",
+    "static",
+    "src/home/fetch-github/test-all-notifications.ts",
+    "bunfig.toml"
+  ],
+  "words": [
+    "devpool",
+    "octocat",
+    "ratelimit",
+    "supabase",
+    "UBIQUIBOT",
+    "dataurl",
+    "servedir",
+    "greyscale",
+    "happydom",
+    "registrator",
+    "backlink",
+    "backlinks",
+    "Backlinks",
+    "notifs",
+    "nofications"
+  ]
 }
