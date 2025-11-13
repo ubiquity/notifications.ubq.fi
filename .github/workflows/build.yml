@@ -47,7 +47,14 @@ jobs:
       # Type checking omitted to match previous CI behavior
 
       - name: Test (with JUnit + coverage)
-        run: bun test
+        shell: bash
+        run: |
+          if git ls-files | grep -Eq '\\.(test|spec)\\.(ts|tsx|js|jsx)$'; then
+            bun test
+          else
+            echo "No test files present; skipping bun test"
+            echo '<testsuite name="empty" tests="0"/>' > junit.xml
+          fi
 
       - name: Ensure test artifacts exist
         if: always()
