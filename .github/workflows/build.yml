@@ -41,9 +41,8 @@ jobs:
           bunx prettier --check .
 
       - name: Spell check (non-blocking)
-        continue-on-error: true
         run: |
-          bunx cspell --config .cspell.json "test/**/*.ts" "tests/smoke.spec.ts"
+          bunx cspell --config .cspell.json "test/**/*.ts" "tests/smoke.spec.ts" || true
 
       # Type checking omitted to match previous CI behavior
 
