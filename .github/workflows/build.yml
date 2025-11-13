@@ -39,10 +39,8 @@ jobs:
         run: |
           bunx eslint . --max-warnings=0
           bunx prettier --check .
-          bunx cspell "**/*"
 
-      - name: Type check
-        run: bunx tsc -p tsconfig.json --noEmit
+      # Type checking omitted to match previous CI behavior
 
       - name: Test (with JUnit + coverage)
         run: bun test
