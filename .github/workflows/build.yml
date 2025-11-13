@@ -8,28 +8,64 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
-    runs-on: ubuntu-22.04
-
+    runs-on: ubuntu-latest
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
-        # with:
-        # submodules: "recursive" # Ensures submodules are checked out
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - name: Cache Bun global cache
+        uses: actions/cache@v4
         with:
-          node-version: 20.10.0
+          path: ~/.bun/install/cache
+          key: bun-cache-${{ runner.os }}-${{ hashFiles('bun.lockb') }}
+          restore-keys: |
+            bun-cache-${{ runner.os }}-
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies (frozen lockfile)
+        run: bun ci
+
+      - name: Lint and format check
+        run: |
+          bunx eslint . --max-warnings=0
+          bunx prettier --check .
+          bunx cspell "**/*"
+
+      - name: Type check
+        run: bunx tsc -p tsconfig.json --noEmit
+
+      - name: Test (with JUnit + coverage)
+        run: bun test
+
+      - name: Upload JUnit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit
+          path: junit.xml
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage
 
       - name: Build
-        run: |
-          yarn
-          yarn build
-        env: # Set environment variables for the build
-          SUPABASE_URL: "https://wfzpewmlyiozupulbuur.supabase.co"
-          SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndmenBld21seWlvenVwdWxidXVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE2OTU2NzQzMzksImV4cCI6MjAxMTI1MDMzOX0.SKIL3Q0NOBaMehH0ekFspwgcu3afp3Dl9EDzPqs1nKs"
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: bun run build
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4

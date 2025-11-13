@@ -1,0 +1,9 @@
+[test]
+preload = ["./tests/happydom-setup.ts", "./tests/setup-env.ts"]
+coverage = true
+coverageDir = "./coverage"
+timeout = 10000
+
+[test.reporter]
+junit = "./junit.xml"
+
