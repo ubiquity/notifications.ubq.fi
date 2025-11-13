@@ -1,15 +1,18 @@
 Goal & Scope
+
 - Replace Node/Yarn/Jest workflow with Bun as the runtime, package manager, and test runner.
 - Keep esbuild plugins and current build outputs; run them via Bun.
 - Update CI to use Bun for install, lint, test (with coverage/JUnit), and build. Keep Cloudflare deployment flow via artifact.
 
 Key Outcomes
+
 - One lockfile: bun.lockb (commit it; remove Yarn/PNP files).
 - One runner: bun for dev, test, lint, build, and release.
 - Tests run via bun test with happy‑dom, coverage, and JUnit output.
 - CI workflows use oven-sh/setup-bun@v2 and cache Bun’s global package cache.
 
 Repository Changes
+
 - Remove Yarn PnP artifacts and lock:
   - Delete: .pnp.cjs, .pnp.loader.mjs, .yarn/, yarn.lock.
 - Commit Bun lockfile:
@@ -40,7 +43,9 @@ Repository Changes
   - build/esbuild-build.ts:1 uses dotenv today; Bun autoloads .env, so dotenv call is optional. You can remove it in a follow‑up.
 
 bunfig.toml (add this at repo root)
+
 - File: bunfig.toml:1
+
 ```
 [test]
 preload = ["./tests/happydom-setup.ts", "./tests/setup-env.ts"]
@@ -55,14 +60,18 @@ junit = "./junit.xml"
 ```
 
 happy-dom preload (new)
+
 - File: tests/happydom-setup.ts:1
+
 ```
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 GlobalRegistrator.register();
 ```
 
 Adjust tests/setup-env.ts
+
 - Replace Jest‑specific mocks with Bun mocks or manual stubs. Example revision for tests/setup-env.ts:1:
+
 ```
 import { afterEach, mock } from "bun:test";
 
@@ -124,6 +133,7 @@ globalThis.structuredClone = ((obj: any) => JSON.parse(JSON.stringify(obj))) as 
 ```
 
 CI Workflows (Bun)
+
 - Build (replaces Node/Yarn)
   - .github/workflows/build.yml:1
     - Uses oven-sh/setup-bun@v2 with caching.
@@ -134,6 +144,7 @@ CI Workflows (Bun)
   - Replace hard-coded Supabase env in old Build with GitHub secrets.
 
 Suggested build.yml content:
+
 ```
 name: Build
 
@@ -209,6 +220,7 @@ jobs:
 ```
 
 File Cleanup (No Clutter)
+
 - Delete Yarn/PnP artifacts:
   - .pnp.cjs, .pnp.loader.mjs, .yarn/ directory, yarn.lock
 - Remove Node version pin:
@@ -224,6 +236,7 @@ File Cleanup (No Clutter)
   - esbuild, eslint/prettier, typescript, knip, husky, cspell, wrangler
 
 Local Developer Flow
+
 - Install Bun:
   - macOS: brew install oven-sh/bun/bun
   - or: curl -fsSL https://bun.sh/install | bash
@@ -237,6 +250,7 @@ Local Developer Flow
 - Husky still runs via prepare script on bun install.
 
 Validation Checklist
+
 - bun install works cleanly; bun.lockb committed.
 - bun run dev serves the site; bun run build outputs static/dist.
 - bun test passes locally; JUnit (junit.xml) and coverage under coverage/ produced.
@@ -244,6 +258,7 @@ Validation Checklist
 - Remove Yarn PnP files from repo and CI; no references to Yarn/Node toolchain remain.
 
 Notes and Gotchas
+
 - DOM tests: Bun doesn’t support jsdom; happy‑dom is the recommended approach via preload.
 - Mocks: jest.fn isn’t available; use mock() from bun:test (experimental) or manual stubs as shown.
 - Env: Bun autoloads .env; do not import dotenv/config in tests. For strict control, pass --env-file="" to disable autoload.

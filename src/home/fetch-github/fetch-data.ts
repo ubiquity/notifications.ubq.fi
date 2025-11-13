@@ -12,13 +12,15 @@ async function fetchNotifications(): Promise<GitHubNotifications | null> {
   const octokit = new Octokit({ auth: providerToken });
 
   try {
-    const notifications = (await octokit.request("GET /notifications", {
-      headers: {
-        "X-GitHub-Api-Version": "2022-11-28"
-      },
-      all: false, // Only get unread notifications
-      participating: true // Only get notifications in which the user is directly participating
-    })).data as GitHubNotifications;
+    const notifications = (
+      await octokit.request("GET /notifications", {
+        headers: {
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
+        all: false, // Only get unread notifications
+        participating: true, // Only get notifications in which the user is directly participating
+      })
+    ).data as GitHubNotifications;
     console.log("unfiltered", notifications);
     return notifications;
   } catch (error) {
