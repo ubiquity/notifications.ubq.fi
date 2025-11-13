@@ -39,14 +39,12 @@ jobs:
         run: |
           bunx eslint . --max-warnings=0
           bunx prettier --check .
+          bunx cspell "src/**/*.ts" "tests/**/*.ts" "test/**/*.ts"
 
       # Type checking omitted to match previous CI behavior
 
       - name: Test (with JUnit + coverage)
-        shell: bash
-        run: |
-          # Run tests; if none found, bun exits 1. Continue for empty suites.
-          bun test || echo "bun test returned non-zero (likely no tests); continuing"
+        run: bun test
 
       - name: Ensure test artifacts exist
         if: always()
@@ -70,8 +68,8 @@ jobs:
 
       - name: Build
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL != '' && secrets.SUPABASE_URL || 'https://wfzpewmlyiozupulbuur.supabase.co' }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY != '' && secrets.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndmenBld21seWlvenVwdWxidXVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE2OTU2NzQzMzksImV4cCI6MjAxMTI1MDMzOX0.SKIL3Q0NOBaMehH0ekFspwgcu3afp3Dl9EDzPqs1nKs' }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://wfzpewmlyiozupulbuur.supabase.co' }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndmenBld21seWlvenVwdWxidXVyIiwicm9zZSI6ImFub24iLCJpYXQiOjE2OTU2NzQzMzksImV4cCI6MjAxMTI1MDMzOX0.SKIL3Q0NOBaMehH0ekFspwgcu3afp3Dl9EDzPqs1nKs' }}
         run: bun run build
 
       - name: Upload build artifact
