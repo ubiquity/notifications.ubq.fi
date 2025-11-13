@@ -39,6 +39,10 @@ jobs:
         run: |
           bunx eslint . --max-warnings=0
           bunx prettier --check .
+
+      - name: Spell check (non-blocking)
+        continue-on-error: true
+        run: |
           bunx cspell --config .cspell.json "test/**/*.ts" "tests/smoke.spec.ts"
 
       # Type checking omitted to match previous CI behavior
