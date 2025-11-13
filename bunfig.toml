@@ -3,7 +3,7 @@ preload = ["./tests/happydom-setup.ts", "./tests/setup-env.ts"]
 coverage = true
 coverageDir = "./coverage"
 timeout = 10000
+match = ["**/*.spec.ts", "**/*.test.ts", "**/*.spec.tsx", "**/*.test.tsx", "**/*.spec.js", "**/*.test.js", "**/*.spec.jsx", "**/*.test.jsx"]
 
 [test.reporter]
 junit = "./junit.xml"
-
