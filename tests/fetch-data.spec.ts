@@ -14,25 +14,35 @@ jest.mock("@supabase/supabase-js", () => ({
   createClient: jest.fn(() => ({})),
 }));
 
-jest.mock("../src/home/getters/get-indexed-db", () => ({
-  saveNotificationsToCache: jest.fn().mockResolvedValue(undefined),
-  saveAggregatedNotificationsToCache: jest.fn().mockResolvedValue(undefined),
+// Local stubs (jest config mappers do not run under bun test)
+jest.mock("@octokit/rest", () => ({
+  Octokit: class {
+    request = jest.fn().mockResolvedValue({ data: [] });
+  },
 }));
-jest.mock("../src/home/getters/get-github-access-token", () => ({
-  getGitHubAccessToken: jest.fn(() => null),
-}));
+jest.mock("@octokit/request-error", () => {
+  return { RequestError: class RequestError extends Error { status?: number } };
+});
 
-// Octokit is already stubbed via moduleNameMapper to return empty []
-
+import * as indexedDb from "../src/home/getters/get-indexed-db";
+import * as tokenModule from "../src/home/getters/get-github-access-token";
 import { fetchIssues, fetchPullRequests, fetchAllNotifications, processNotifications, getIssueNotifications } from "../src/home/fetch-github/fetch-data";
 import { GitHubIssue, GitHubLabel, GitHubNotification, GitHubNotifications, GitHubPullRequest } from "../src/home/github-types";
-import { saveNotificationsToCache, saveAggregatedNotificationsToCache } from "../src/home/getters/get-indexed-db";
+
+let saveNotificationsToCacheSpy: jest.SpiedFunction<typeof indexedDb.saveNotificationsToCache>;
+let saveAggregatedNotificationsToCacheSpy: jest.SpiedFunction<typeof indexedDb.saveAggregatedNotificationsToCache>;
 
 describe("fetch-data helpers", () => {
   const realFetch = testGlobals.fetch;
 
+  beforeEach(() => {
+    saveNotificationsToCacheSpy = jest.spyOn(indexedDb, "saveNotificationsToCache").mockResolvedValue(undefined);
+    saveAggregatedNotificationsToCacheSpy = jest.spyOn(indexedDb, "saveAggregatedNotificationsToCache").mockResolvedValue(undefined);
+    getGitHubAccessTokenSpy = jest.spyOn(tokenModule, "getGitHubAccessToken").mockReturnValue("token");
+  });
+
   afterEach(() => {
-    jest.resetAllMocks();
+    jest.restoreAllMocks();
     testGlobals.fetch = realFetch;
   });
 
@@ -54,12 +64,12 @@ describe("fetch-data helpers", () => {
     expect(pulls[0].url).toBe(pr.url);
   });
 
-  it("pre-filter excludes disallowed reasons and repos", () => {
+  it("pre-filter excludes disallowed reasons and repos", async () => {
     const devpoolRepos = new Set(["owner/repo"]);
     const notifications: GitHubNotifications = [
       {
         id: "n1",
-        reason: "comment", // should be filtered out
+        reason: "comment", // allowed; repo matches
         subject: { title: "Ignored", url: "https://api.github.com/repos/owner/repo/issues/1", type: "Issue" },
         repository: { full_name: "owner/repo" },
         updated_at: "2023-01-01T00:00:00Z",
@@ -76,8 +86,9 @@ describe("fetch-data helpers", () => {
     const issues: Partial<GitHubIssue>[] = [
       { url: "https://api.github.com/repos/owner/repo/issues/1", state: "open", repository_url: "https://api.github.com/repos/owner/repo" },
     ];
-    const result = getIssueNotifications(devpoolRepos, notifications, issues as unknown as GitHubIssue[]);
-    expect(result).toHaveLength(0);
+    const result = await getIssueNotifications(devpoolRepos, notifications, issues as unknown as GitHubIssue[], "token");
+    expect(result).toHaveLength(1);
+    expect(result?.[0]?.notification.id).toBe("n1");
   });
 
   it("processNotifications filters by Priority label and counts backlinks for issues", async () => {
@@ -136,7 +147,7 @@ describe("fetch-data helpers", () => {
       },
     ];
 
-    const result = await processNotifications(notifications, pullRequests as unknown as GitHubPullRequest[], issues as unknown as GitHubIssue[]);
+    const result = await processNotifications(notifications, pullRequests as unknown as GitHubPullRequest[], issues as unknown as GitHubIssue[], "token");
     expect(result).not.toBeNull();
     if (!result) return;
     expect(result.length).toBe(1);
@@ -160,8 +171,8 @@ describe("fetch-data helpers", () => {
       .mockResolvedValueOnce({ ok: true, json: jest.fn().mockResolvedValue([issue]) } as unknown as Response); // issues
 
     const result = await fetchAllNotifications();
-    expect(saveNotificationsToCache).toHaveBeenCalled();
-    expect(saveAggregatedNotificationsToCache).toHaveBeenCalled();
+    expect(saveNotificationsToCacheSpy).toHaveBeenCalled();
+    expect(saveAggregatedNotificationsToCacheSpy).toHaveBeenCalled();
     // With empty notifications from Octokit stub, returns []
     expect(result).toEqual([]);
   });
