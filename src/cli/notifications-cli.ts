@@ -43,10 +43,7 @@ function toHtmlUrl(notification: GitHubAggregated): string {
   if (prUrl) return prUrl;
   const subjectUrl = notification.notification.subject.url;
   if (subjectUrl?.startsWith("https://api.github.com/repos/")) {
-    return subjectUrl
-      .replace("https://api.github.com/repos/", "https://github.com/")
-      .replace("/pulls/", "/pull/")
-      .replace("/issues/", "/issues/");
+    return subjectUrl.replace("https://api.github.com/repos/", "https://github.com/").replace("/pulls/", "/pull/").replace("/issues/", "/issues/");
   }
   return notification.notification.repository?.html_url || subjectUrl || "";
 }

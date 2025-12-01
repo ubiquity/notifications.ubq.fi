@@ -271,7 +271,7 @@ function everyNewNotification({
 }: {
   notification: GitHubAggregated;
   notificationsContainer: HTMLDivElement;
-  commentsMap: Map<string, { userType: string; url: string; avatarUrl: string; commentBody: string }>;
+  commentsMap: Map<string, { userType: string; url: string; avatarUrl: string; commentBody: string; isSlashCommand: boolean }>;
   octokit: Octokit | null;
 }) {
   const issueWrapper = notificationTemplate.cloneNode(true) as HTMLDivElement;
@@ -292,7 +292,12 @@ function everyNewNotification({
 
   const commentData = commentsMap.get(notification.notification.id.toString());
 
-  if (!commentData || (commentData.userType === "Bot" && !shouldShowBotNotifications)) {
+  if (!commentData) return;
+  if (commentData.isSlashCommand) {
+    console.log("skipping ", notification.notification.subject.title, " because of slash command comment");
+    return;
+  }
+  if (commentData.userType === "Bot" && !shouldShowBotNotifications) {
     console.log("skipping ", notification.notification.subject.title, " because of bot notification");
     return;
   }
@@ -310,7 +315,7 @@ function setUpIssueElement(
   organizationName: string,
   repositoryName: string,
   labels: string[],
-  commentData: { userType: string; url: string; avatarUrl: string; commentBody: string }
+  commentData: { userType: string; url: string; avatarUrl: string; commentBody: string; isSlashCommand: boolean }
 ) {
   if (commentData.userType === "Bot" && !shouldShowBotNotifications) {
     console.log("bot notifications are hidden");
@@ -398,7 +403,7 @@ function setUpIssueElement(
 
 async function fetchLatestComments(notifications: GitHubAggregated[]) {
   const providerToken = await getGitHubAccessToken();
-  const commentsMap = new Map<string, { userType: string; url: string; avatarUrl: string; commentBody: string }>();
+  const commentsMap = new Map<string, { userType: string; url: string; avatarUrl: string; commentBody: string; isSlashCommand: boolean }>();
 
   await Promise.all(
     notifications.map(async (notification) => {
@@ -407,6 +412,7 @@ async function fetchLatestComments(notifications: GitHubAggregated[]) {
       let url = notification.issue?.html_url || notification.pullRequest?.html_url || subject.url || "#";
       let avatarUrl = "";
       let commentBody = subject.title || "New activity";
+      let isSlashCommand = false;
 
       if (subject.latest_comment_url) {
         try {
@@ -420,7 +426,9 @@ async function fetchLatestComments(notifications: GitHubAggregated[]) {
             userType = data.user?.type || "";
             url = data.html_url || url;
             avatarUrl = data.user?.avatar_url || avatarUrl;
-            commentBody = data.body || commentBody;
+            const rawBody = data.body || "";
+            isSlashCommand = rawBody.trim().startsWith("/");
+            commentBody = rawBody || commentBody;
           }
 
           // Check if commentBody contains HTML
@@ -434,7 +442,7 @@ async function fetchLatestComments(notifications: GitHubAggregated[]) {
         }
       }
 
-      commentsMap.set(notification.notification.id.toString(), { userType, url, avatarUrl, commentBody });
+      commentsMap.set(notification.notification.id.toString(), { userType, url, avatarUrl, commentBody, isSlashCommand });
     })
   );
 

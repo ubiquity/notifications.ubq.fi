@@ -165,12 +165,14 @@ export async function getPullRequestNotifications(
     if (!pullRequest) {
       try {
         const octokit = new Octokit({ auth: token });
-        pullRequest = (await octokit.request("GET /repos/{owner}/{repo}/pulls/{pull_number}", {
-          owner: notification.repository.owner.login,
-          repo: notification.repository.name,
-          pull_number: Number(notification.subject.url.split("/").pop()),
-          headers: { "X-GitHub-Api-Version": "2022-11-28" },
-        })).data as unknown as GitHubPullRequest;
+        pullRequest = (
+          await octokit.request("GET /repos/{owner}/{repo}/pulls/{pull_number}", {
+            owner: notification.repository.owner.login,
+            repo: notification.repository.name,
+            pull_number: Number(notification.subject.url.split("/").pop()),
+            headers: { "X-GitHub-Api-Version": "2022-11-28" },
+          })
+        ).data as unknown as GitHubPullRequest;
       } catch (error) {
         console.log("skipping ", notification.subject.title, "cause PR not found in API", error);
         continue;
