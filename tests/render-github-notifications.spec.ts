@@ -9,6 +9,7 @@ type TestGlobals = typeof globalThis & {
 const testGlobals = global as TestGlobals;
 testGlobals.SUPABASE_URL = "test";
 testGlobals.SUPABASE_ANON_KEY = "test";
+document.body.innerHTML = '<div id="issues-container"></div>';
 
 jest.mock("@supabase/supabase-js", () => ({
   createClient: jest.fn(() => ({})),
@@ -17,11 +18,21 @@ jest.mock("@supabase/supabase-js", () => ({
 jest.mock("../src/home/home", () => ({
   get notificationsContainer() {
     // Resolve the container dynamically to match the current DOM set in beforeEach
-    return document.getElementById("notifications") as HTMLDivElement;
+    return document.getElementById("issues-container") as HTMLDivElement;
   },
   shouldShowBotNotifications: false,
 }));
-jest.mock("../src/home/rendering/render-preview-modal");
+jest.mock("../src/home/rendering/render-preview-modal", () => {
+  const modal = document.createElement("div");
+  modal.id = "preview-modal";
+  modal.innerHTML = '<button class="close-preview"></button><div class="modal-content"></div><div class="modal-toolbar"></div>';
+  return {
+    modal,
+    modalBodyInner: document.createElement("div"),
+    titleAnchor: document.createElement("a"),
+    titleHeader: document.createElement("h2"),
+  };
+});
 jest.mock("../src/home/rendering/render-github-login-button");
 jest.mock("../src/home/getters/get-github-access-token", () => ({
   getGitHubAccessToken: jest.fn(),
@@ -33,8 +44,9 @@ import { GitHubAggregated } from "../src/home/github-types";
 
 describe("renderNotifications", () => {
   beforeEach(() => {
-    document.body.innerHTML = '<div id="notifications"></div>';
-    const fetchMock = jest.fn<typeof fetch>().mockResolvedValue({
+    document.body.innerHTML = '<div id="issues-container"></div>';
+    window.scrollTo = jest.fn();
+    const fetchMock = jest.fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>().mockResolvedValue({
       json: jest.fn().mockResolvedValue({
         user: { login: "testuser", type: "User", avatar_url: "https://example.com/avatar.png" },
         html_url: "https://github.com/testuser",
@@ -46,7 +58,7 @@ describe("renderNotifications", () => {
   });
 
   it("appends issue-element-inner with mocked fetch", async () => {
-    const notifications: GitHubAggregated[] = [
+    const notifications = [
       {
         notification: {
           id: "1",
@@ -76,9 +88,12 @@ describe("renderNotifications", () => {
         },
         backlinkCount: 0,
       },
-    ];
+    ] as unknown as GitHubAggregated[];
 
     await renderNotifications(notifications, true);
+    // Debug output to verify rendered structure during tests
+    // eslint-disable-next-line no-console
+    console.log(document.body.innerHTML);
     const elements = document.querySelectorAll(".issue-element-inner");
     expect(elements.length).toBe(1);
   });

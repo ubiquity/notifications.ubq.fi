@@ -24,15 +24,20 @@ import { GitHubIssue, GitHubNotifications, GitHubPullRequest } from "../src/home
 
 describe("processNotifications", () => {
   it("handles PR with missing base.repo without throwing", async () => {
-    const notifications: GitHubNotifications = [
+    const notifications = [
       {
         id: "1",
         reason: "review_requested",
-        subject: { title: "Test PR", url: "https://api.github.com/repos/owner/repo/pulls/123", type: "PullRequest" },
+        subject: {
+          title: "Test PR",
+          url: "https://api.github.com/repos/owner/repo/pulls/123",
+          type: "PullRequest",
+          latest_comment_url: "https://api.github.com/repos/owner/repo/issues/comments/123",
+        },
         repository: { full_name: "owner/repo" },
         updated_at: "2023-01-01T00:00:00Z",
       },
-    ];
+    ] as unknown as GitHubNotifications;
     const pullRequests = [
       {
         url: "https://api.github.com/repos/owner/repo/pulls/123",
@@ -43,7 +48,7 @@ describe("processNotifications", () => {
         base: { repo: undefined }, // missing base.repo
         head: { repo: { url: "https://api.github.com/repos/owner/repo" } },
       },
-    ];
+    ] as unknown as GitHubPullRequest[];
     const issues = [
       {
         url: "https://api.github.com/repos/owner/repo/issues/456",
@@ -54,7 +59,7 @@ describe("processNotifications", () => {
         labels: [{ name: "Priority: High" }],
         number: 456,
       },
-    ];
+    ] as unknown as GitHubIssue[];
 
     expect(async () => await processNotifications(notifications, pullRequests, issues)).not.toThrow();
     const result = await processNotifications(notifications, pullRequests, issues);

@@ -9,15 +9,20 @@ describe('IndexedDB cache functions', () => {
 
   it('saves and retrieves notifications with TTL', async () => {
     const cached: GitHubNotifications = [];
-    const fetched: GitHubNotifications = [
+    const fetched = [
       {
         id: '1',
         reason: 'review_requested',
-        subject: { title: 'Test', url: 'https://api.github.com/repos/owner/repo/pulls/123', type: 'PullRequest' },
+        subject: {
+          title: 'Test',
+          url: 'https://api.github.com/repos/owner/repo/pulls/123',
+          type: 'PullRequest',
+          latest_comment_url: 'https://api.github.com/repos/owner/repo/issues/comments/1',
+        },
         repository: { full_name: 'owner/repo' },
-        updated_at: '2023-01-01T00:00:00Z'
-      }
-    ];
+        updated_at: '2023-01-01T00:00:00Z',
+      },
+    ] as unknown as GitHubNotifications;
 
     await saveNotificationsToCache(cached, fetched);
     const result = await getNotificationsFromCache();
@@ -37,15 +42,20 @@ describe('IndexedDB cache functions', () => {
   });
 
   it('removes stale notifications', async () => {
-    const cached: GitHubNotifications = [
+    const cached = [
       {
         id: 'old',
         reason: 'review_requested',
-        subject: { title: 'Old', url: 'https://api.github.com/repos/owner/repo/pulls/456', type: 'PullRequest' },
+        subject: {
+          title: 'Old',
+          url: 'https://api.github.com/repos/owner/repo/pulls/456',
+          type: 'PullRequest',
+          latest_comment_url: 'https://api.github.com/repos/owner/repo/issues/comments/2',
+        },
         repository: { full_name: 'owner/repo' },
-        updated_at: '2023-01-01T00:00:00Z'
-      }
-    ];
+        updated_at: '2023-01-01T00:00:00Z',
+      },
+    ] as unknown as GitHubNotifications;
     const fetched: GitHubNotifications = []; // old one not in fetched
 
     await saveNotificationsToCache(cached, fetched);

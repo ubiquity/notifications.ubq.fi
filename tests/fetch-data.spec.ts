@@ -36,14 +36,18 @@ describe("fetch-data helpers", () => {
   });
 
   it("fetchIssues returns [] on non-ok response", async () => {
-    testGlobals.fetch = jest.fn<typeof fetch>().mockResolvedValue({ ok: false, status: 500, statusText: "Internal Error" } as Response);
+    testGlobals.fetch = jest
+      .fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>()
+      .mockResolvedValue({ ok: false, status: 500, statusText: "Internal Error" } as Response);
     const issues = await fetchIssues();
     expect(issues).toEqual([]);
   });
 
   it("fetchPullRequests returns parsed JSON on ok", async () => {
     const pr: Partial<GitHubPullRequest> = { url: "https://api.github.com/repos/owner/repo/pulls/1", state: "open", draft: false, body: "" };
-    testGlobals.fetch = jest.fn<typeof fetch>().mockResolvedValue({ ok: true, json: jest.fn().mockResolvedValue([pr]) } as unknown as Response);
+    testGlobals.fetch = jest
+      .fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>()
+      .mockResolvedValue({ ok: true, json: jest.fn().mockResolvedValue([pr]) } as unknown as Response);
     const pulls = await fetchPullRequests();
     expect(pulls.length).toBe(1);
     expect(pulls[0].url).toBe(pr.url);
@@ -150,7 +154,7 @@ describe("fetch-data helpers", () => {
       labels: [{ name: "Priority: High" } as GitHubLabel],
     };
     testGlobals.fetch = jest
-      .fn<typeof fetch>()
+      .fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>()
       .mockResolvedValueOnce({ ok: true, json: jest.fn().mockResolvedValue([]) } as unknown as Response) // pulls
       .mockResolvedValueOnce({ ok: true, json: jest.fn().mockResolvedValue([issue]) } as unknown as Response); // issues
 

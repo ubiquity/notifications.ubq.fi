@@ -3176,9 +3176,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ubiquity/nofications.ubq.fi@workspace:.":
+"@ubiquity/notifications.ubq.fi@workspace:.":
   version: 0.0.0-use.local
-  resolution: "@ubiquity/nofications.ubq.fi@workspace:."
+  resolution: "@ubiquity/notifications.ubq.fi@workspace:."
   dependencies:
     "@cloudflare/workers-types": "npm:^4.20241011.0"
     "@commitlint/cli": "npm:^18.4.3"
@@ -3205,7 +3205,7 @@ __metadata:
     jest-environment-node: "npm:^29.7.0"
     jest-junit: "npm:^16.0.0"
     jest-localstorage-mock: "npm:^2.4.26"
-    jest-md-dashboard: "npm:^0.8.1"
+    jest-md-dashboard: "npm:0.8.0"
     jest-util: "npm:^30.2.0"
     knip: "npm:^3.3.0"
     lint-staged: "npm:^15.1.0"
@@ -6703,9 +6703,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"isomorphic-git@npm:^1.34.0":
-  version: 1.35.0
-  resolution: "isomorphic-git@npm:1.35.0"
+"isomorphic-git@npm:^1.25.6":
+  version: 1.35.1
+  resolution: "isomorphic-git@npm:1.35.1"
   dependencies:
     async-lock: "npm:^1.4.1"
     clean-git-ref: "npm:^2.0.1"
@@ -6720,7 +6720,7 @@ __metadata:
     simple-get: "npm:^4.0.1"
   bin:
     isogit: cli.cjs
-  checksum: 10c0/14e80b97a60c762ad0b2000137888f9b98900336c99036915f1d84a6e11a8536c5fee1b953b5cabbd31c4ab3ff5eb63ab14d091d3ab8cb115771371847275b50
+  checksum: 10c0/033ce01f19342c2254b2bda65f1a7c91fd5e50e49c3d74134a19bbc4a52039083662fc6080998dfaceeda6fe18bb0c08701b162881d828ad5c482a6c94d6d53f
   languageName: node
   linkType: hard
 
@@ -7089,12 +7089,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"jest-md-dashboard@npm:^0.8.1":
-  version: 0.8.1
-  resolution: "jest-md-dashboard@npm:0.8.1"
+"jest-md-dashboard@npm:0.8.0":
+  version: 0.8.0
+  resolution: "jest-md-dashboard@npm:0.8.0"
   dependencies:
-    isomorphic-git: "npm:^1.34.0"
-  checksum: 10c0/1f9f908340ba6894a453414a33e2bf1e132360ca82064b333dbf8c6602b9df95684c89b4ea8d47c640c1095d04a92ea333935e624884b90e73215865916caf54
+    isomorphic-git: "npm:^1.25.6"
+  checksum: 10c0/ed35c4a39defabb69c56c542ccb3988d9336abaa0b33304d590ab2e91c78e161caf526e2d2be826ef96d3e15a39c51d63eb444da7357669a9bbb5363c4d171c5
   languageName: node
   linkType: hard
 

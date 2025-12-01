@@ -121,7 +121,7 @@ export async function saveNotificationsToCache(cachedNotifications: GitHubNotifi
   }
 
   // Write/update a sentinel meta record to track cache freshness even when there are zero notifications
-  const meta = { id: -1, cachedAt: now, expiresAt: now + ttl } as unknown as CachedNotificationRecord;
+  const meta = { id: "-1", cachedAt: now, expiresAt: now + ttl } as unknown as CachedNotificationRecord;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (store as any).put(meta);
 
@@ -145,7 +145,7 @@ export async function getNotificationsFromCache(): Promise<GitHubNotifications> 
       const results = (request.result as unknown as CachedNotificationRecord[]) || [];
       // Filter out meta record (id === -1) and expired notifications
       const validNotifications = results
-        .filter((item) => (typeof item.id === "number" || typeof item.id === "string") && item.id !== -1)
+        .filter((item) => item.id !== "-1")
         .filter((item) => (item.expiresAt ? item.expiresAt > now : true)) as unknown as GitHubNotifications;
       resolve(validNotifications);
     };

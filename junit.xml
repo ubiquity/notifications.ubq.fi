@@ -1,21 +1,61 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuites name="jest tests" tests="6" failures="0" errors="0" time="9.593">
-  <testsuite name="undefined" errors="0" failures="0" skipped="0" timestamp="2025-12-01T20:10:18" time="7.819" tests="1">
-    <testcase classname=" ci smoke passes" name=" ci smoke passes" time="0.005">
+<testsuites name="jest tests" tests="19" failures="1" errors="0" time="10.108">
+  <testsuite name="undefined" errors="0" failures="0" skipped="0" timestamp="2025-12-01T20:21:35" time="6.815" tests="1">
+    <testcase classname=" ci smoke passes" name=" ci smoke passes" time="0.004">
     </testcase>
   </testsuite>
-  <testsuite name="setLocalStore and getLocalStore" errors="0" failures="0" skipped="0" timestamp="2025-12-01T20:10:18" time="8.165" tests="2">
-    <testcase classname="setLocalStore and getLocalStore round-trips string[]" name="setLocalStore and getLocalStore round-trips string[]" time="0.005">
+  <testsuite name="setLocalStore and getLocalStore" errors="0" failures="0" skipped="0" timestamp="2025-12-01T20:21:34" time="7.268" tests="2">
+    <testcase classname="setLocalStore and getLocalStore round-trips string[]" name="setLocalStore and getLocalStore round-trips string[]" time="0.004">
     </testcase>
-    <testcase classname="setLocalStore and getLocalStore round-trips OAuthToken object" name="setLocalStore and getLocalStore round-trips OAuthToken object" time="0.002">
+    <testcase classname="setLocalStore and getLocalStore round-trips OAuthToken object" name="setLocalStore and getLocalStore round-trips OAuthToken object" time="0">
     </testcase>
   </testsuite>
-  <testsuite name="displayPopupMessage" errors="0" failures="0" skipped="0" timestamp="2025-12-01T20:10:18" time="8.118" tests="3">
-    <testcase classname="displayPopupMessage sets title and body, toggles error class" name="displayPopupMessage sets title and body, toggles error class" time="0.011">
+  <testsuite name="displayPopupMessage" errors="0" failures="0" skipped="0" timestamp="2025-12-01T20:21:34" time="7.418" tests="3">
+    <testcase classname="displayPopupMessage sets title and body, toggles error class" name="displayPopupMessage sets title and body, toggles error class" time="0.01">
     </testcase>
     <testcase classname="renderErrorInModal logs message and calls displayPopupMessage" name="renderErrorInModal logs message and calls displayPopupMessage" time="0.002">
     </testcase>
-    <testcase classname="renderErrorInModal handles undefined info" name="renderErrorInModal handles undefined info" time="0">
+    <testcase classname="renderErrorInModal handles undefined info" name="renderErrorInModal handles undefined info" time="0.007">
+    </testcase>
+  </testsuite>
+  <testsuite name="IndexedDB cache functions" errors="0" failures="0" skipped="0" timestamp="2025-12-01T20:21:35" time="7.52" tests="4">
+    <testcase classname="IndexedDB cache functions saves and retrieves notifications with TTL" name="IndexedDB cache functions saves and retrieves notifications with TTL" time="0.05">
+    </testcase>
+    <testcase classname="IndexedDB cache functions filters out expired items" name="IndexedDB cache functions filters out expired items" time="0.017">
+    </testcase>
+    <testcase classname="IndexedDB cache functions removes stale notifications" name="IndexedDB cache functions removes stale notifications" time="0.006">
+    </testcase>
+    <testcase classname="IndexedDB cache functions clears cache" name="IndexedDB cache functions clears cache" time="0.002">
+    </testcase>
+  </testsuite>
+  <testsuite name="fetch-data helpers" errors="0" failures="0" skipped="0" timestamp="2025-12-01T20:21:35" time="8.576" tests="5">
+    <testcase classname="fetch-data helpers fetchIssues returns [] on non-ok response" name="fetch-data helpers fetchIssues returns [] on non-ok response" time="0.01">
+    </testcase>
+    <testcase classname="fetch-data helpers fetchPullRequests returns parsed JSON on ok" name="fetch-data helpers fetchPullRequests returns parsed JSON on ok" time="0.001">
+    </testcase>
+    <testcase classname="fetch-data helpers pre-filter excludes disallowed reasons and repos" name="fetch-data helpers pre-filter excludes disallowed reasons and repos" time="0.001">
+    </testcase>
+    <testcase classname="fetch-data helpers processNotifications filters by Priority label and counts backlinks for issues" name="fetch-data helpers processNotifications filters by Priority label and counts backlinks for issues" time="0.002">
+    </testcase>
+    <testcase classname="fetch-data helpers fetchAllNotifications saves to cache when data returns" name="fetch-data helpers fetchAllNotifications saves to cache when data returns" time="0.001">
+    </testcase>
+  </testsuite>
+  <testsuite name="renderNotifications" errors="0" failures="1" skipped="0" timestamp="2025-12-01T20:21:35" time="8.645" tests="1">
+    <testcase classname="renderNotifications appends issue-element-inner with mocked fetch" name="renderNotifications appends issue-element-inner with mocked fetch" time="0.018">
+      <failure>Error: expect(received).toBe(expected) // Object.is equality
+
+Expected: 1
+Received: 0
+    at Object.&lt;anonymous&gt; (/Users/nv/repos/ubiquity/notifications.ubq.fi/tests/render-github-notifications.spec.ts:95:29)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)</failure>
+    </testcase>
+  </testsuite>
+  <testsuite name="processNotifications" errors="0" failures="0" skipped="0" timestamp="2025-12-01T20:21:35" time="8.602" tests="3">
+    <testcase classname="processNotifications handles PR with missing base.repo without throwing" name="processNotifications handles PR with missing base.repo without throwing" time="0.037">
+    </testcase>
+    <testcase classname="processNotifications filters out draft PRs" name="processNotifications filters out draft PRs" time="0.001">
+    </testcase>
+    <testcase classname="processNotifications filters out closed issues" name="processNotifications filters out closed issues" time="0.001">
     </testcase>
   </testsuite>
 </testsuites>

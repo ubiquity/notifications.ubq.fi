@@ -1,5 +1,5 @@
 {
-  "name": "@ubiquity/nofications.ubq.fi",
+  "name": "@ubiquity/notifications.ubq.fi",
   "version": "1.0.0",
   "description": "The GitHub notifications viewer for UbiquityOS.",
   "main": "build/index.ts",
@@ -57,7 +57,7 @@
     "jest-environment-node": "^29.7.0",
     "jest-junit": "^16.0.0",
     "jest-localstorage-mock": "^2.4.26",
-    "jest-md-dashboard": "^0.8.1",
+    "jest-md-dashboard": "0.8.0",
     "jest-util": "^30.2.0",
     "knip": "^3.3.0",
     "lint-staged": "^15.1.0",
