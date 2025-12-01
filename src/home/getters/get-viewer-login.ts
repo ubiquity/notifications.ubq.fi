@@ -1,4 +1,5 @@
 import { getGitHubUserName } from "./get-github-access-token";
+import { handleAuthFailure } from "../auth/handle-auth-failure";
 
 export async function resolveViewerLogin(providerToken: string | null): Promise<string | null> {
   let cachedLogin: string | null = null;
@@ -15,6 +16,9 @@ export async function resolveViewerLogin(providerToken: string | null): Promise<
       headers: { Authorization: `Bearer ${providerToken}`, "X-GitHub-Api-Version": "2022-11-28" },
     });
     if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        await handleAuthFailure("resolveViewerLogin");
+      }
       console.warn("Failed to resolve viewer login", response.status);
       return null;
     }
