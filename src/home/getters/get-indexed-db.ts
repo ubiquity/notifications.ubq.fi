@@ -162,9 +162,13 @@ export async function saveAggregatedNotificationsToCache(aggregated: GitHubAggre
   });
 }
 
+function isNotExpired(expiresAt?: number, now: number = Date.now()): boolean {
+  return typeof expiresAt === "number" ? expiresAt > now : true;
+}
+
 function filterValid<T extends { expiresAt?: number; id: number | string }>(items: T[]): T[] {
   const now = Date.now();
-  return items.filter((item) => item.id !== META_KEY && (typeof item.expiresAt === "number" ? item.expiresAt > now : true));
+  return items.filter((item) => item.id !== META_KEY && isNotExpired(item.expiresAt, now));
 }
 
 // Retrieves notifications from IndexedDB, filtering out expired ones
@@ -228,19 +232,19 @@ export async function isNotificationsCacheValid(): Promise<boolean> {
 
   return new Promise((resolve) => {
     const metaReq = notificationsStore.get(META_KEY);
-    function resolveIfValid(meta: CachedNotificationDB | undefined) {
+    function resolveIfValid(meta: CacheMetaRecord | undefined) {
       if (!meta || !meta.expiresAt) return resolve(false);
       resolve(meta.expiresAt > Date.now());
     }
 
     metaReq.onsuccess = () => {
-      const meta = metaReq.result as unknown as CachedNotificationDB | undefined;
+      const meta = metaReq.result as CacheMetaRecord | undefined;
       if (meta && meta.expiresAt) {
         resolveIfValid(meta);
       } else {
         const aggregatedMetaReq = aggregatedStore.get(META_KEY);
         aggregatedMetaReq.onsuccess = () => {
-          resolveIfValid(aggregatedMetaReq.result as unknown as CachedNotificationDB | undefined);
+          resolveIfValid(aggregatedMetaReq.result as CacheMetaRecord | undefined);
         };
         aggregatedMetaReq.onerror = () => resolve(false);
       }

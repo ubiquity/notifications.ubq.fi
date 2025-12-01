@@ -22,10 +22,10 @@ export async function fetchNotifications(options: { token?: string } = {}): Prom
         headers: {
           "X-GitHub-Api-Version": "2022-11-28",
         },
-        all: false, // Only get unread notifications
-        // Intentionally set participating=false so we surface all unread devpool notifications
-        // (filtering happens later by repo + priority labels), even if the user is not directly involved.
-        participating: false,
+        // Need full set of notifications for downstream filtering (repo + priority + backlink pass)
+        all: true,
+        // Restrict to direct participation to avoid unrelated noise
+        participating: true,
       })
     ).data as GitHubNotifications;
     console.log("unfiltered", notifications);
@@ -96,13 +96,18 @@ function filterIssueNotifications(devpoolRepos: Set<string>, notifications: GitH
   return preFilterNotifications(devpoolRepos, notifications).filter((notification: GitHubNotification) => notification.subject.type === "Issue");
 }
 
+const ISSUE_KEYWORDS_PATTERN = "(Resolves|Closes|Fixes)";
+const ISSUE_URL_REGEX = new RegExp(`${ISSUE_KEYWORDS_PATTERN}\\s+(https:\\/\\/github\\.com\\/(.+?)\\/(.+?)\\/issues\\/(\\d+))`, "i");
+const ISSUE_NUMBER_REGEX = new RegExp(`${ISSUE_KEYWORDS_PATTERN}\\s+#(\\d+)`, "i");
+const ISSUE_MARKDOWN_LINK_REGEX = new RegExp(`${ISSUE_KEYWORDS_PATTERN}\\s+\\[\\s*#(\\d+)\\s*\\]`, "i");
+
 async function fetchIssueFromPullRequest(pullRequest: GitHubPullRequest, issues: GitHubIssue[]): Promise<GitHubIssue | null> {
   if (!pullRequest.body) return null;
 
   // Match the issue reference in the PR body
-  const issueUrlMatch = pullRequest.body.match(/(Resolves|Closes|Fixes)\s+(https:\/\/github\.com\/(.+?)\/(.+?)\/issues\/(\d+))/i);
-  const issueNumberMatch = pullRequest.body.match(/(Resolves|Closes|Fixes)\s+#(\d+)/i);
-  const issueMarkdownLinkMatch = pullRequest.body.match(/(Resolves|Closes|Fixes)\s+\[\s*#(\d+)\s*\]/i);
+  const issueUrlMatch = pullRequest.body.match(ISSUE_URL_REGEX);
+  const issueNumberMatch = pullRequest.body.match(ISSUE_NUMBER_REGEX);
+  const issueMarkdownLinkMatch = pullRequest.body.match(ISSUE_MARKDOWN_LINK_REGEX);
 
   let apiUrl: string;
 
@@ -401,7 +406,7 @@ export async function processNotifications(
     return hasPriority;
   });
 
-  // If none carry a priority label, fall back to all so the UI is not empty
+  // UX: If none carry a priority label, fall back to all so the UI is not empty (partner feeds sometimes omit labels)
   const filteredNotifications = priorityNotifications.length > 0 ? priorityNotifications : allNotifications;
   if (priorityNotifications.length === 0) {
     console.log("no priority labels found; showing all notifications as fallback");

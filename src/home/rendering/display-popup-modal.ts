@@ -3,7 +3,11 @@ import { modal, modalBodyInner, titleAnchor, titleHeader } from "./render-previe
 export function displayPopupMessage({ modalHeader, modalBody, isError, url }: { modalHeader: string; modalBody: string; isError: boolean; url?: string }) {
   if (!modal || !titleHeader || !modalBodyInner || typeof document === "undefined") {
     // Non-DOM environment: log instead of rendering
-    console[isError ? "error" : "log"]({ modalHeader, modalBody, url });
+    if (isError) {
+      console.error({ modalHeader, modalBody, url });
+    } else {
+      console.log({ modalHeader, modalBody, url });
+    }
     return;
   }
   titleHeader.textContent = modalHeader;

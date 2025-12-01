@@ -102,30 +102,32 @@ export async function getNotifications() {
       isNotificationsCacheValid(),
     ]);
 
-    // Use fresh aggregated cache when valid
-    if (isCacheValid && cachedAggregated.length) {
-      notifications = cachedAggregated;
-      return notifications;
-    }
-
-    // Fallback: rebuild aggregated cache from raw cached notifications
-    if (isCacheValid && cachedNotifications.length) {
-      const [pullRequests, issues] = await Promise.all([fetchPullRequests(), fetchIssues()]);
-      notifications = pullRequests && issues ? await processNotifications(cachedNotifications, pullRequests, issues) : null;
-      if (notifications) {
-        await saveAggregatedNotificationsToCache(notifications);
+    if (isCacheValid) {
+      // Prefer aggregated cache when TTL is valid, even if it contains zero items
+      if (cachedAggregated.length || cachedNotifications.length === 0) {
+        notifications = cachedAggregated;
         return notifications;
+      }
+
+      // Rebuild aggregated cache from raw cached notifications when available
+      if (!cachedAggregated.length && cachedNotifications.length) {
+        const [pullRequests, issues] = await Promise.all([fetchPullRequests(), fetchIssues()]);
+        notifications = pullRequests && issues ? await processNotifications(cachedNotifications, pullRequests, issues) : null;
+        if (notifications) {
+          await saveAggregatedNotificationsToCache(notifications);
+          return notifications;
+        }
       }
     }
 
     // Offline fallback: return whatever aggregated cache exists even if TTL expired
-    if (!isOnline && cachedAggregated.length) {
+    if (!isOnline) {
       notifications = cachedAggregated;
       return notifications;
     }
 
     notifications = await fetchAllNotifications();
-    if (!notifications && cachedAggregated.length) {
+    if (!notifications) {
       notifications = cachedAggregated;
     }
   }
