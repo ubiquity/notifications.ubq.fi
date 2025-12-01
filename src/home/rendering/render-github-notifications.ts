@@ -7,7 +7,7 @@ import { notificationsContainer, shouldShowBotNotifications } from "../home";
 import { getTimeAgo } from "./utils";
 
 // Track viewed notifications to avoid re-marking
-const viewedNotifications = new Set<string>(getLocalStore<string[]>('viewed-notifications') ?? []);
+const viewedNotifications = new Set<string>(getLocalStore<string[]>("viewed-notifications") ?? []);
 
 export async function renderNotifications(notifications: GitHubAggregated[], skipAnimation: boolean) {
   const providerToken = await getGitHubAccessToken();
@@ -42,34 +42,37 @@ export async function renderNotifications(notifications: GitHubAggregated[], ski
   }
 
   // Set up auto-mark on view
-  const observer = new IntersectionObserver(async (entries) => {
-    for (const entry of entries) {
-      if (!entry.isIntersecting) continue;
-      const issueElement = entry.target as HTMLElement;
-      const id = issueElement.getAttribute('data-issue-id');
-      if (id && !viewedNotifications.has(id)) {
-        viewedNotifications.add(id);
-        setLocalStore('viewed-notifications', Array.from(viewedNotifications));
-        const octokit = new Octokit({ auth: providerToken });
-        try {
-          await octokit.request("PATCH /notifications/threads/{thread_id}", {
-            thread_id: Number(id),
-            headers: { "X-GitHub-Api-Version": "2022-11-28" },
-          });
-          // Remove the notification from UI
-          issueElement.remove();
-        } catch (error) {
-          console.error("Failed to mark notification as read on view:", error);
+  const observer = new IntersectionObserver(
+    async (entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        const issueElement = entry.target as HTMLElement;
+        const id = issueElement.getAttribute("data-issue-id");
+        if (id && !viewedNotifications.has(id)) {
+          viewedNotifications.add(id);
+          setLocalStore("viewed-notifications", Array.from(viewedNotifications));
+          const octokit = new Octokit({ auth: providerToken });
+          try {
+            await octokit.request("PATCH /notifications/threads/{thread_id}", {
+              thread_id: Number(id),
+              headers: { "X-GitHub-Api-Version": "2022-11-28" },
+            });
+            // Remove the notification from UI
+            issueElement.remove();
+          } catch (error) {
+            console.error("Failed to mark notification as read on view:", error);
+          }
         }
+        observer.unobserve(entry.target);
       }
-      observer.unobserve(entry.target);
-    }
-  }, { threshold: 0.5 });
+    },
+    { threshold: 0.5 }
+  );
 
   // Observe new notifications
-  const newNotifications = notificationsContainer.querySelectorAll('.issue-element-inner:not(.observed)');
+  const newNotifications = notificationsContainer.querySelectorAll(".issue-element-inner:not(.observed)");
   newNotifications.forEach((el) => {
-    el.classList.add('observed');
+    el.classList.add("observed");
     observer.observe(el);
   });
 
@@ -172,11 +175,7 @@ function everyNewNotification({
   issueElement.classList.add("issue-element-inner");
 
   const labels = parseAndGenerateLabels(notification);
-  const repoUrl =
-    notification.notification.repository?.url ||
-    notification.issue?.repository_url ||
-    notification.pullRequest?.base?.repo?.url ||
-    "";
+  const repoUrl = notification.notification.repository?.url || notification.issue?.repository_url || notification.pullRequest?.base?.repo?.url || "";
 
   if (!repoUrl) {
     console.log("skipping ", notification.notification.subject.title, " because of missing repo url");
@@ -280,7 +279,7 @@ function setUpIssueElement(
       });
       // Mark as viewed locally
       viewedNotifications.add(notification.notification.id.toString());
-      setLocalStore('viewed-notifications', Array.from(viewedNotifications));
+      setLocalStore("viewed-notifications", Array.from(viewedNotifications));
     } catch (error) {
       console.error("Failed to mark notification as read:", error);
     }

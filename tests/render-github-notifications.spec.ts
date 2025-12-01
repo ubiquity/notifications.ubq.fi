@@ -1,7 +1,14 @@
 /** @jest-environment jsdom */
 
-(global as any).SUPABASE_URL = 'test';
-(global as any).SUPABASE_ANON_KEY = 'test';
+type TestGlobals = typeof globalThis & {
+  SUPABASE_URL: string;
+  SUPABASE_ANON_KEY: string;
+  fetch: typeof fetch;
+};
+
+const testGlobals = global as TestGlobals;
+testGlobals.SUPABASE_URL = "test";
+testGlobals.SUPABASE_ANON_KEY = "test";
 
 jest.mock('@supabase/supabase-js', () => ({
   createClient: jest.fn(() => ({}))
@@ -27,13 +34,14 @@ import { GitHubAggregated } from '../src/home/github-types';
 describe('renderNotifications', () => {
   beforeEach(() => {
     document.body.innerHTML = '<div id="notifications"></div>';
-    (global.fetch as jest.Mock).mockResolvedValue({
+    const fetchMock = jest.fn<typeof fetch>().mockResolvedValue({
       json: jest.fn().mockResolvedValue({
         user: { login: 'testuser', type: 'User', avatar_url: 'https://example.com/avatar.png' },
         html_url: 'https://github.com/testuser',
         body: 'Comment body'
       })
-    });
+    } as unknown as Response);
+    testGlobals.fetch = fetchMock;
     (getGitHubAccessToken as jest.Mock).mockReturnValue(null);
   });
 

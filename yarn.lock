@@ -3183,6 +3183,7 @@ __metadata:
     "@cloudflare/workers-types": "npm:^4.20241011.0"
     "@commitlint/cli": "npm:^18.4.3"
     "@commitlint/config-conventional": "npm:^18.4.3"
+    "@eslint/eslintrc": "npm:^2.1.4"
     "@octokit/request-error": "npm:^6.1.0"
     "@octokit/rest": "npm:^20.0.2"
     "@supabase/supabase-js": "npm:^2.39.0"

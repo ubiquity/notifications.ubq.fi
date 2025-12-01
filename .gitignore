@@ -17,3 +17,5 @@ static/dist
 .vscode
 coverage/
 test-dashboard.md
+.assistant/
+.assistant_test/

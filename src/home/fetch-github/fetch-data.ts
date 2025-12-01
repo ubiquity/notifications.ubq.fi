@@ -13,13 +13,15 @@ async function fetchNotifications(): Promise<GitHubNotifications | null> {
   const octokit = new Octokit({ auth: providerToken });
 
   try {
-    const notifications = (await octokit.request("GET /notifications", {
-      headers: {
-        "X-GitHub-Api-Version": "2022-11-28"
-      },
-      all: false, // Only get unread notifications
-      participating: true // Only get notifications in which the user is directly participating
-    })).data as GitHubNotifications;
+    const notifications = (
+      await octokit.request("GET /notifications", {
+        headers: {
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
+        all: false, // Only get unread notifications
+        participating: true, // Only get notifications in which the user is directly participating
+      })
+    ).data as GitHubNotifications;
     console.log("unfiltered", notifications);
     return notifications;
   } catch (error) {
@@ -265,22 +267,23 @@ function countBacklinks(aggregated: GitHubAggregated, allPullRequests: GitHubPul
     const source = getIssueRepositorySource(issue);
     let issueOwner: string | undefined;
     let issueRepo: string | undefined;
-    if (source.includes("github.com")) {
-      const m = source.match(/github\.com\/(.+?)\/(.+?)\//);
-      if (m) {
-        issueOwner = m[1];
-        issueRepo = m[2];
+    if (source.includes("api.github.com")) {
+      const match = source.match(/repos\/([^/]+)\/([^/]+)(?:\/|$)/);
+      if (match) {
+        issueOwner = match[1];
+        issueRepo = match[2];
       }
-    } else if (source.includes("api.github.com")) {
-      const m = source.match(/repos\/(.+?)\/(.+?)\//);
-      if (m) {
-        issueOwner = m[1];
-        issueRepo = m[2];
+    } else if (source.includes("github.com")) {
+      const match = source.match(/github\.com\/([^/]+)\/([^/]+)(?:\/|$)/);
+      if (match) {
+        issueOwner = match[1];
+        issueRepo = match[2];
       }
-    } else if (source) {
-      const parts = source.split("/");
-      issueOwner = parts[parts.length - 2];
-      issueRepo = parts[parts.length - 1];
+    }
+    if ((!issueOwner || !issueRepo) && source) {
+      const parts = source.split("/").filter(Boolean);
+      issueOwner = issueOwner ?? parts[parts.length - 2];
+      issueRepo = issueRepo ?? parts[parts.length - 1];
     }
     if (!issueOwner || !issueRepo) continue;
     totalCount += countMatches(issue.body ?? null, issueRepo, issueOwner);
@@ -309,22 +312,23 @@ function getDevpoolRepos(pullRequests: GitHubPullRequest[], issues: GitHubIssue[
     const source = getIssueRepositorySource(issue);
     let issueOwner: string | undefined;
     let issueRepo: string | undefined;
-    if (source.includes("github.com")) {
-      const m = source.match(/github\.com\/(.+?)\/(.+?)\//);
-      if (m) {
-        issueOwner = m[1];
-        issueRepo = m[2];
+    if (source.includes("api.github.com")) {
+      const match = source.match(/repos\/([^/]+)\/([^/]+)(?:\/|$)/);
+      if (match) {
+        issueOwner = match[1];
+        issueRepo = match[2];
       }
-    } else if (source.includes("api.github.com")) {
-      const m = source.match(/repos\/(.+?)\/(.+?)\//);
-      if (m) {
-        issueOwner = m[1];
-        issueRepo = m[2];
+    } else if (source.includes("github.com")) {
+      const match = source.match(/github\.com\/([^/]+)\/([^/]+)(?:\/|$)/);
+      if (match) {
+        issueOwner = match[1];
+        issueRepo = match[2];
       }
-    } else if (source) {
-      const parts = source.split("/");
-      issueOwner = parts[parts.length - 2];
-      issueRepo = parts[parts.length - 1];
+    }
+    if ((!issueOwner || !issueRepo) && source) {
+      const parts = source.split("/").filter(Boolean);
+      issueOwner = issueOwner ?? parts[parts.length - 2];
+      issueRepo = issueRepo ?? parts[parts.length - 1];
     }
     if (issueOwner && issueRepo) uniqueNames.add(`${issueOwner}/${issueRepo}`);
   }
@@ -334,15 +338,16 @@ function getDevpoolRepos(pullRequests: GitHubPullRequest[], issues: GitHubIssue[
 // Helper: best-effort extraction of repository URL-ish source from an issue
 function getIssueRepositorySource(issue: GitHubIssue): string {
   // Prefer API repository URL when available, then html_url, then url
-  // Some fields can be undefined depending on the request shape/mocks
-  // Access safely with optional chaining and fallback to empty string
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const anyIssue = issue as any;
-  return anyIssue?.repository_url || anyIssue?.html_url || anyIssue?.url || "";
+  const urls = issue as unknown as { repository_url?: string; html_url?: string; url?: string };
+  return urls.repository_url ?? urls.html_url ?? urls.url ?? "";
 }
 
 // Process notifications into aggregated data
-export async function processNotifications(notifications: GitHubNotifications, pullRequests: GitHubPullRequest[], issues: GitHubIssue[]): Promise<GitHubAggregated[] | null> {
+export async function processNotifications(
+  notifications: GitHubNotifications,
+  pullRequests: GitHubPullRequest[],
+  issues: GitHubIssue[]
+): Promise<GitHubAggregated[] | null> {
   const devpoolRepos = getDevpoolRepos(pullRequests, issues);
   console.log("devpoolRepos: ", devpoolRepos);
 

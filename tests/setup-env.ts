@@ -1,5 +1,3 @@
-import { afterEach, mock } from "bun:test";
-
 // Only set DOM if available (happy-dom preload provides document/window)
 if (typeof document !== "undefined") {
   document.body.innerHTML = `
@@ -27,32 +25,50 @@ if (typeof document !== "undefined") {
 }
 
 // IntersectionObserver mock
-globalThis.IntersectionObserver = class IntersectionObserver {
-  root: Element | null = null;
-  rootMargin = "";
-  thresholds: ReadonlyArray<number> = [];
-  observe() {}
-  unobserve() {}
-  disconnect() {}
+class MockIntersectionObserver implements IntersectionObserver {
+  readonly root: Element | null = null;
+  readonly rootMargin = "";
+  readonly thresholds: ReadonlyArray<number> = [];
+
+  constructor(private readonly _callback: IntersectionObserverCallback = () => {}, options?: IntersectionObserverInit) {
+    void options;
+  }
+
+  disconnect(): void {}
+  observe(target: Element): void {
+    this._callback([{ isIntersecting: true, target } as unknown as IntersectionObserverEntry], this);
+  }
+  unobserve(target: Element): void {
+    void target;
+  }
   takeRecords(): IntersectionObserverEntry[] { return []; }
-} as any;
+}
+globalThis.IntersectionObserver = MockIntersectionObserver;
 
 // DOMParser mock (minimal)
-globalThis.DOMParser = class DOMParser {
-  parseFromString(str: string, contentType: string) {
-    const doc = { body: { children: contentType === "text/html" && str.includes("<") ? [{}] : [] } };
-    return doc as any;
-  }
-} as any;
+class MockDOMParser implements DOMParser {
+  parseFromString(str: string, contentType: DOMParserSupportedType): Document {
+    if (typeof document !== "undefined") {
+      const doc = document.implementation.createHTMLDocument("");
+      if (contentType === "text/html" && str.includes("<")) {
+        doc.body.innerHTML = str;
+      }
+      return doc;
+    }
 
-// fetch mock (bun:test mock or manual)
-export const fetchMock = mock(() => Promise.resolve({ json: async () => ({}) })) as unknown as typeof fetch;
-globalThis.fetch = fetchMock as any;
-afterEach(() => (fetchMock as any).mockReset?.());
+    const fallbackBody = { children: contentType === "text/html" && str.includes("<") ? [{} as Element] : [] };
+    return { body: fallbackBody } as unknown as Document;
+  }
+}
+globalThis.DOMParser = MockDOMParser;
+
+// fetch mock using jest.fn to simulate fetch/json responses
+export const fetchMock = jest.fn(() => Promise.resolve({ json: async () => ({}) })) as unknown as jest.MockedFunction<typeof fetch>;
+globalThis.fetch = fetchMock as unknown as typeof fetch;
+afterEach(() => fetchMock.mockReset());
 
 // URL.createObjectURL mock
-globalThis.URL.createObjectURL = (() => "blob://mock") as any;
+globalThis.URL.createObjectURL = (() => "blob://mock") as typeof URL.createObjectURL;
 
 // structuredClone polyfill
-globalThis.structuredClone = ((obj: any) => JSON.parse(JSON.stringify(obj))) as any;
-
+globalThis.structuredClone = <T>(obj: T) => JSON.parse(JSON.stringify(obj)) as T;

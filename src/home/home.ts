@@ -48,10 +48,7 @@ let notifications: Awaited<ReturnType<typeof fetchAllNotifications>> | undefined
 // This is made to make notifications global
 export async function getNotifications() {
   if (!notifications) {
-    const [cached, cacheValid] = await Promise.all([
-      getNotificationsFromCache(),
-      isNotificationsCacheValid(),
-    ]);
+    const [cached, cacheValid] = await Promise.all([getNotificationsFromCache(), isNotificationsCacheValid()]);
     if (cacheValid) {
       const [pullRequests, issues] = await Promise.all([fetchPullRequests(), fetchIssues()]);
       notifications = pullRequests && issues ? await processNotifications(cached, pullRequests, issues) : await fetchAllNotifications();

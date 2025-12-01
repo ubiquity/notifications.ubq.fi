@@ -1,8 +1,15 @@
 /** @jest-environment jsdom */
 
+type TestGlobals = typeof globalThis & {
+  SUPABASE_URL: string;
+  SUPABASE_ANON_KEY: string;
+  fetch: typeof fetch;
+};
+
 // Minimal SUPABASE env + client mock to satisfy transitive imports
-(global as any).SUPABASE_URL = 'test';
-(global as any).SUPABASE_ANON_KEY = 'test';
+const testGlobals = global as TestGlobals;
+testGlobals.SUPABASE_URL = "test";
+testGlobals.SUPABASE_ANON_KEY = "test";
 jest.mock('@supabase/supabase-js', () => ({
   createClient: jest.fn(() => ({}))
 }));
@@ -17,26 +24,28 @@ jest.mock('../src/home/getters/get-github-access-token', () => ({
 // Octokit is already stubbed via moduleNameMapper to return empty []
 
 import { fetchIssues, fetchPullRequests, fetchAllNotifications, processNotifications, getIssueNotifications } from '../src/home/fetch-github/fetch-data';
-import { GitHubIssue, GitHubNotification, GitHubNotifications, GitHubPullRequest } from '../src/home/github-types';
+import { GitHubIssue, GitHubLabel, GitHubNotification, GitHubNotifications, GitHubPullRequest } from '../src/home/github-types';
 import { saveNotificationsToCache } from '../src/home/getters/get-indexed-db';
 
 describe('fetch-data helpers', () => {
-  const realFetch = global.fetch as any;
+  const realFetch = testGlobals.fetch;
 
   afterEach(() => {
     jest.resetAllMocks();
-    global.fetch = realFetch;
+    testGlobals.fetch = realFetch;
   });
 
   it('fetchIssues returns [] on non-ok response', async () => {
-    global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 500, statusText: 'Internal Error' });
+    testGlobals.fetch = jest.fn<typeof fetch>().mockResolvedValue({ ok: false, status: 500, statusText: 'Internal Error' } as Response);
     const issues = await fetchIssues();
     expect(issues).toEqual([]);
   });
 
   it('fetchPullRequests returns parsed JSON on ok', async () => {
     const pr: Partial<GitHubPullRequest> = { url: 'https://api.github.com/repos/owner/repo/pulls/1', state: 'open', draft: false, body: '' };
-    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: jest.fn().mockResolvedValue([pr]) });
+    testGlobals.fetch = jest.fn<typeof fetch>().mockResolvedValue(
+      { ok: true, json: jest.fn().mockResolvedValue([pr]) } as unknown as Response
+    );
     const pulls = await fetchPullRequests();
     expect(pulls.length).toBe(1);
     expect(pulls[0].url).toBe(pr.url);
@@ -64,7 +73,7 @@ describe('fetch-data helpers', () => {
     const issues: Partial<GitHubIssue>[] = [
       { url: 'https://api.github.com/repos/owner/repo/issues/1', state: 'open', repository_url: 'https://api.github.com/repos/owner/repo' },
     ];
-    const result = getIssueNotifications(devpoolRepos, notifications as any, issues as any);
+    const result = getIssueNotifications(devpoolRepos, notifications, issues as unknown as GitHubIssue[]);
     expect(result).toHaveLength(0);
   });
 
@@ -92,7 +101,7 @@ describe('fetch-data helpers', () => {
         state: 'open',
         number: 42,
         repository_url: 'https://api.github.com/repos/owner/repo',
-        labels: [{ name: 'Priority: High' } as any],
+        labels: [{ name: 'Priority: High' } as GitHubLabel],
         body: 'See details',
       },
       {
@@ -101,7 +110,7 @@ describe('fetch-data helpers', () => {
         number: 43,
         repository_url: 'https://api.github.com/repos/owner/repo',
         labels: [], // will be filtered out
-        body: null as any,
+        body: null,
       },
       // Another issue body linking by short ref
       {
@@ -119,15 +128,20 @@ describe('fetch-data helpers', () => {
         url: 'https://api.github.com/repos/owner/repo/pulls/100',
         state: 'open',
         draft: false,
-        base: { repo: { url: 'https://api.github.com/repos/owner/repo' } } as any,
+        base: { repo: { url: 'https://api.github.com/repos/owner/repo' } } as GitHubPullRequest["base"],
         body: 'Fixes https://api.github.com/repos/owner/repo/issues/42', // full issue URL backlink
       },
     ];
 
-    const result = await processNotifications(notifications as any, pullRequests as any, issues as any);
+    const result = await processNotifications(
+      notifications,
+      pullRequests as unknown as GitHubPullRequest[],
+      issues as unknown as GitHubIssue[]
+    );
     expect(result).not.toBeNull();
-    expect(result!.length).toBe(1);
-    const agg = result![0];
+    if (!result) return;
+    expect(result.length).toBe(1);
+    const agg = result[0];
     expect(agg.issue.number).toBe(42);
     // Should count 2 backlinks: PR full URL + short ref in an issue in same repo
     expect(agg.backlinkCount).toBeGreaterThanOrEqual(2);
@@ -135,12 +149,16 @@ describe('fetch-data helpers', () => {
 
   it('fetchAllNotifications saves to cache when data returns', async () => {
     // Mock fetch for pulls and issues
-    const pr: Partial<GitHubPullRequest> = { url: 'https://api.github.com/repos/owner/repo/pulls/1', state: 'open', draft: false, body: '' };
-    const issue: Partial<GitHubIssue> = { url: 'https://api.github.com/repos/owner/repo/issues/1', state: 'open', repository_url: 'https://api.github.com/repos/owner/repo', labels: [{ name: 'Priority: High' }] as any };
-    global.fetch = jest
-      .fn()
-      .mockResolvedValueOnce({ ok: true, json: jest.fn().mockResolvedValue([]) }) // pulls
-      .mockResolvedValueOnce({ ok: true, json: jest.fn().mockResolvedValue([issue]) }); // issues
+    const issue: Partial<GitHubIssue> = {
+      url: 'https://api.github.com/repos/owner/repo/issues/1',
+      state: 'open',
+      repository_url: 'https://api.github.com/repos/owner/repo',
+      labels: [{ name: 'Priority: High' } as GitHubLabel]
+    };
+    testGlobals.fetch = jest
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce({ ok: true, json: jest.fn().mockResolvedValue([]) } as unknown as Response) // pulls
+      .mockResolvedValueOnce({ ok: true, json: jest.fn().mockResolvedValue([issue]) } as unknown as Response); // issues
 
     const result = await fetchAllNotifications();
     expect(saveNotificationsToCache).toHaveBeenCalled();

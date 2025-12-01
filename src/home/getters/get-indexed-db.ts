@@ -5,6 +5,7 @@ interface CachedNotificationDB extends GitHubNotification {
   cachedAt: number;
   expiresAt: number;
 }
+type CachedNotificationRecord = CachedNotificationDB & { id: number | string };
 
 // this file contains functions to save and retrieve issues/images from IndexedDB which is client-side in-browser storage
 export async function saveImageToCache({
@@ -100,7 +101,9 @@ export async function saveNotificationsToCache(cachedNotifications: GitHubNotifi
   const store = transaction.objectStore("notifications");
 
   // Identify and remove stale notifications (in cache but not in fetched list)
-  const staleNotifications = cachedNotifications.filter((cachedNotification: GitHubNotification) => !fetchedNotifications.some((notification: GitHubNotification) => notification.id === cachedNotification.id));
+  const staleNotifications = cachedNotifications.filter(
+    (cachedNotification: GitHubNotification) => !fetchedNotifications.some((notification: GitHubNotification) => notification.id === cachedNotification.id)
+  );
   for (const notification of staleNotifications) {
     store.delete(notification.id);
   }
@@ -118,7 +121,7 @@ export async function saveNotificationsToCache(cachedNotifications: GitHubNotifi
   }
 
   // Write/update a sentinel meta record to track cache freshness even when there are zero notifications
-  const meta = { id: -1, cachedAt: now, expiresAt: now + ttl } as unknown as CachedNotificationDB;
+  const meta = { id: -1, cachedAt: now, expiresAt: now + ttl } as unknown as CachedNotificationRecord;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (store as any).put(meta);
 
@@ -139,11 +142,11 @@ export async function getNotificationsFromCache(): Promise<GitHubNotifications> 
 
     request.onsuccess = () => {
       const now = Date.now();
-      const results = (request.result as unknown as Array<CachedNotificationDB | { id: number }>) || [];
+      const results = (request.result as unknown as CachedNotificationRecord[]) || [];
       // Filter out meta record (id === -1) and expired notifications
       const validNotifications = results
-        .filter((item) => typeof item.id === "number" && item.id !== -1)
-        .filter((item) => (item as CachedNotificationDB).expiresAt ? (item as CachedNotificationDB).expiresAt > now : true) as unknown as GitHubNotifications;
+        .filter((item) => (typeof item.id === "number" || typeof item.id === "string") && item.id !== -1)
+        .filter((item) => (item.expiresAt ? item.expiresAt > now : true)) as unknown as GitHubNotifications;
       resolve(validNotifications);
     };
     request.onerror = () => reject(request.error);

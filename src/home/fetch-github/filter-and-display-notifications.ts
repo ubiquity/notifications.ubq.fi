@@ -19,7 +19,7 @@ export async function displayNotifications({
 } = {}) {
   const notifications = await getNotifications();
   if (notifications === null || notifications.length === 0) {
-    renderEmpty();
+    await renderEmpty();
     return;
   }
   const sortedIssues = sortIssuesController(notifications, sorting, options);

@@ -38,6 +38,7 @@
     "@cloudflare/workers-types": "^4.20241011.0",
     "@commitlint/cli": "^18.4.3",
     "@commitlint/config-conventional": "^18.4.3",
+    "@eslint/eslintrc": "^2.1.4",
     "@types/jest": "^30.0.0",
     "@types/node": "^20.10.0",
     "@typescript-eslint/eslint-plugin": "^6.13.1",
