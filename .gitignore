@@ -16,6 +16,7 @@ static/dist
 # vscode
 .vscode
 coverage/
+junit.xml
 test-dashboard.md
 .assistant/
 .assistant_test/
