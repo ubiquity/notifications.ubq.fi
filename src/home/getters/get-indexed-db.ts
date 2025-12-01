@@ -1,4 +1,22 @@
-import { GitHubNotifications } from "../github-types";
+import { GitHubAggregated, GitHubNotifications, GitHubNotification } from "../github-types";
+
+// Represents a cached notification record stored in IndexedDB
+interface CachedNotificationDB extends GitHubNotification {
+  cachedAt: number;
+  expiresAt: number;
+}
+type CachedNotificationRecord = CachedNotificationDB & { id: number | string };
+
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const DB_VERSION = 2;
+const NOTIFICATIONS_STORE = "notifications";
+const AGGREGATED_STORE = "aggregatedNotifications";
+const META_KEY = "meta";
+interface CacheMetaRecord {
+  id: typeof META_KEY;
+  cachedAt: number;
+  expiresAt: number;
+}
 
 // this file contains functions to save and retrieve issues/images from IndexedDB which is client-side in-browser storage
 export async function saveImageToCache({
@@ -72,14 +90,17 @@ export function getImageFromCache({ dbName, storeName, orgName }: { dbName: stri
   });
 }
 
-async function openIssuesDB(): Promise<IDBDatabase> {
+async function openNotificationsDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open("IssuesDB", 2);
+    const request = indexedDB.open("NotificationsDB", DB_VERSION);
 
     request.onupgradeneeded = (event) => {
       const db = (event.target as IDBOpenDBRequest).result;
-      if (!db.objectStoreNames.contains("issues")) {
-        db.createObjectStore("issues", { keyPath: "id" });
+      if (!db.objectStoreNames.contains(NOTIFICATIONS_STORE)) {
+        db.createObjectStore(NOTIFICATIONS_STORE, { keyPath: "id" });
+      }
+      if (!db.objectStoreNames.contains(AGGREGATED_STORE)) {
+        db.createObjectStore(AGGREGATED_STORE, { keyPath: "id" });
       }
     };
 
@@ -87,22 +108,29 @@ async function openIssuesDB(): Promise<IDBDatabase> {
     request.onerror = () => reject(request.error);
   });
 }
-// Saves fetched issues into IndexedDB and removes stale issues
-export async function saveIssuesToCache(cachedIssues: GitHubNotifications, fetchedNotifications: GitHubNotifications): Promise<void> {
-  const db = await openIssuesDB();
-  const transaction = db.transaction("issues", "readwrite");
-  const store = transaction.objectStore("issues");
 
-  // Identify and remove stale issues (in cache but not in fetched list)
-  const staleIssues = cachedIssues.filter((cachedIssue) => !fetchedNotifications.some((issue) => issue.id === cachedIssue.id));
-  for (const issue of staleIssues) {
-    store.delete(issue.id);
-  }
+function putMeta(store: IDBObjectStore, now: number) {
+  const meta: CacheMetaRecord = { id: META_KEY, cachedAt: now, expiresAt: now + CACHE_TTL_MS };
+  store.put(meta);
+}
 
-  // Save or update fetched issues
-  for (const issue of fetchedNotifications) {
-    store.put(issue);
-  }
+// Saves fetched notifications into IndexedDB with TTL (overwrites prior cache)
+export async function saveNotificationsToCache(fetchedNotifications: GitHubNotifications): Promise<void> {
+  const db = await openNotificationsDB();
+  const transaction = db.transaction([NOTIFICATIONS_STORE], "readwrite");
+  const store = transaction.objectStore(NOTIFICATIONS_STORE);
+
+  const now = Date.now();
+  store.clear();
+  fetchedNotifications.forEach((notification) => {
+    const item = {
+      ...notification,
+      cachedAt: now,
+      expiresAt: now + CACHE_TTL_MS,
+    };
+    store.put(item);
+  });
+  putMeta(store, now);
 
   return new Promise((resolve, reject) => {
     transaction.oncomplete = () => resolve();
@@ -110,16 +138,117 @@ export async function saveIssuesToCache(cachedIssues: GitHubNotifications, fetch
   });
 }
 
-// Retrieves issues from IndexedDB
-export async function getIssuesFromCache(): Promise<GitHubNotifications> {
-  const db = await openIssuesDB();
-  const transaction = db.transaction("issues", "readonly");
-  const store = transaction.objectStore("issues");
+// Saves aggregated notifications into IndexedDB with TTL (overwrites prior cache)
+export async function saveAggregatedNotificationsToCache(aggregated: GitHubAggregated[]): Promise<void> {
+  const db = await openNotificationsDB();
+  const transaction = db.transaction([AGGREGATED_STORE], "readwrite");
+  const store = transaction.objectStore(AGGREGATED_STORE);
+
+  const now = Date.now();
+  store.clear();
+  aggregated.forEach((item) => {
+    store.put({
+      id: item.notification.id,
+      ...item,
+      cachedAt: now,
+      expiresAt: now + CACHE_TTL_MS,
+    });
+  });
+  putMeta(store, now);
+
+  return new Promise((resolve, reject) => {
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = (event) => reject((event.target as IDBTransaction).error);
+  });
+}
+
+function isNotExpired(expiresAt?: number, now: number = Date.now()): boolean {
+  return typeof expiresAt === "number" ? expiresAt > now : true;
+}
+
+function filterValid<T extends { expiresAt?: number; id: number | string }>(items: T[]): T[] {
+  const now = Date.now();
+  return items.filter((item) => item.id !== META_KEY && isNotExpired(item.expiresAt, now));
+}
+
+// Retrieves notifications from IndexedDB, filtering out expired ones
+export async function getNotificationsFromCache(): Promise<GitHubNotifications> {
+  const db = await openNotificationsDB();
+  const transaction = db.transaction([NOTIFICATIONS_STORE], "readonly");
+  const store = transaction.objectStore(NOTIFICATIONS_STORE);
 
   return new Promise((resolve, reject) => {
     const request = store.getAll();
 
-    request.onsuccess = () => resolve(request.result || []);
+    request.onsuccess = () => {
+      const results = (request.result as unknown as CachedNotificationRecord[]) || [];
+      resolve(filterValid(results) as unknown as GitHubNotifications);
+    };
     request.onerror = () => reject(request.error);
+  });
+}
+
+// Retrieves aggregated notifications from IndexedDB, filtering out expired ones
+export async function getAggregatedNotificationsFromCache(): Promise<GitHubAggregated[]> {
+  const db = await openNotificationsDB();
+  const transaction = db.transaction([AGGREGATED_STORE], "readonly");
+  const store = transaction.objectStore(AGGREGATED_STORE);
+
+  return new Promise((resolve, reject) => {
+    const request = store.getAll();
+
+    request.onsuccess = () => {
+      const results = (request.result as unknown as (GitHubAggregated & { expiresAt?: number; id: number | string })[]) || [];
+      resolve(filterValid(results));
+    };
+    request.onerror = () => reject(request.error);
+  });
+}
+
+// Clears all notifications from IndexedDB cache
+export async function clearNotificationsCache(): Promise<void> {
+  const db = await openNotificationsDB();
+  const transaction = db.transaction([NOTIFICATIONS_STORE, AGGREGATED_STORE], "readwrite");
+  const notificationsStore = transaction.objectStore(NOTIFICATIONS_STORE);
+  const aggregatedStore = transaction.objectStore(AGGREGATED_STORE);
+
+  return new Promise((resolve, reject) => {
+    const requests = [notificationsStore.clear(), aggregatedStore.clear()];
+
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject((transaction as IDBTransaction).error);
+    requests.forEach((req) => {
+      req.onerror = () => reject(req.error);
+    });
+  });
+}
+
+// Returns whether the notifications cache is still within TTL window
+export async function isNotificationsCacheValid(): Promise<boolean> {
+  const db = await openNotificationsDB();
+  const transaction = db.transaction([NOTIFICATIONS_STORE, AGGREGATED_STORE], "readonly");
+  const notificationsStore = transaction.objectStore(NOTIFICATIONS_STORE);
+  const aggregatedStore = transaction.objectStore(AGGREGATED_STORE);
+
+  return new Promise((resolve) => {
+    const metaReq = notificationsStore.get(META_KEY);
+    function resolveIfValid(meta: CacheMetaRecord | undefined) {
+      if (!meta || !meta.expiresAt) return resolve(false);
+      resolve(meta.expiresAt > Date.now());
+    }
+
+    metaReq.onsuccess = () => {
+      const meta = metaReq.result as CacheMetaRecord | undefined;
+      if (meta && meta.expiresAt) {
+        resolveIfValid(meta);
+      } else {
+        const aggregatedMetaReq = aggregatedStore.get(META_KEY);
+        aggregatedMetaReq.onsuccess = () => {
+          resolveIfValid(aggregatedMetaReq.result as CacheMetaRecord | undefined);
+        };
+        aggregatedMetaReq.onerror = () => resolve(false);
+      }
+    };
+    metaReq.onerror = () => resolve(false);
   });
 }

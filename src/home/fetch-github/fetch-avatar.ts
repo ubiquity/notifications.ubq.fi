@@ -102,7 +102,17 @@ export async function fetchAvatar(orgName: string): Promise<Blob | void> {
 export async function fetchAvatars(notifications: GitHubAggregated[]) {
   // fetches avatar for each organization for each task, but fetchAvatar() will only fetch once per organization, remaining are returned from cache
   const avatarPromises = notifications.map(async (task: GitHubAggregated) => {
-    const [orgName] = task.notification.repository.url.split("/").slice(-2);
+    const repoUrl =
+      task.notification.repository?.url ||
+      task.issue?.repository_url ||
+      task.pullRequest?.base?.repo?.url ||
+      "";
+
+    if (!repoUrl) {
+      return Promise.resolve();
+    }
+
+    const [orgName] = repoUrl.split("/").slice(-2);
     if (orgName) {
       return fetchAvatar(orgName);
     }

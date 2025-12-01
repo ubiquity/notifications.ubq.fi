@@ -23,16 +23,20 @@ export async function handleRateLimit(octokit?: Octokit, error?: RequestError) {
     user: false,
   };
 
-  modal.classList.add("active");
-  document.body.classList.add("preview-active");
+  if (typeof document === "undefined" || !modal) {
+    console.warn("Rate limit encountered (non-DOM context)", { reset: error?.response?.headers["x-ratelimit-reset"] });
+  } else {
+    modal.classList.add("active");
+    document.body.classList.add("preview-active");
 
-  if (toolbar) {
-    toolbar.scrollTo({
-      left: toolbar.scrollWidth,
-      behavior: "smooth",
-    });
+    if (toolbar) {
+      toolbar.scrollTo({
+        left: toolbar.scrollWidth,
+        behavior: "smooth",
+      });
 
-    gitHubLoginButton?.classList.add("highlight");
+      gitHubLoginButton?.classList.add("highlight");
+    }
   }
 
   if (error?.response?.headers["x-ratelimit-reset"]) {

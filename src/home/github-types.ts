@@ -24,14 +24,4 @@ export type GitHubAggregated = {
   notification: GitHubNotification;
   backlinkCount: number;
 };
-export type GitHubLabel =
-  | {
-      id?: number;
-      node_id?: string;
-      url?: string;
-      name: string;
-      description?: string | null;
-      color?: string | null;
-      default?: boolean;
-    }
-  | string;
+export type GitHubLabel = GitHubIssue["labels"][number];
