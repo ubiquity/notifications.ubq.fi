@@ -6,6 +6,8 @@ import { GitHubAggregated, GitHubLabel } from "../github-types";
 import { notificationsContainer, shouldShowBotNotifications, shouldAutoMarkNotifications } from "../home";
 import { getTimeAgo } from "./utils";
 
+const DEFAULT_LATEST_COMMENT = "New activity";
+
 // Track viewed notifications to avoid re-marking
 const viewedNotifications = new Set<string>(getLocalStore<string[]>("viewed-notifications") ?? []);
 const pendingMarkIds = new Set<string>(getLocalStore<string[]>("pending-mark-ids") ?? []);
@@ -434,7 +436,7 @@ async function fetchLatestComments(notifications: GitHubAggregated[]) {
       let userType = "";
       let url = notification.issue?.html_url || notification.pullRequest?.html_url || subject.url || "#";
       let avatarUrl = "";
-      let commentBody = subject.title || "New activity";
+      let commentBody = subject.title || DEFAULT_LATEST_COMMENT;
       let isSlashCommand = false;
 
       if (subject.latest_comment_url) {

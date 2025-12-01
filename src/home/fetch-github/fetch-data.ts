@@ -23,7 +23,9 @@ export async function fetchNotifications(options: { token?: string } = {}): Prom
           "X-GitHub-Api-Version": "2022-11-28",
         },
         all: false, // Only get unread notifications
-        participating: false, // include all unread, not just participating
+        // Intentionally set participating=false so we surface all unread devpool notifications
+        // (filtering happens later by repo + priority labels), even if the user is not directly involved.
+        participating: false,
       })
     ).data as GitHubNotifications;
     console.log("unfiltered", notifications);
