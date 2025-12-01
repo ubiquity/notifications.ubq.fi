@@ -1,20 +1,26 @@
-export const modal = document.getElementById("preview-modal") as HTMLDivElement;
-export const titleAnchor = document.getElementById("preview-title-anchor") as HTMLAnchorElement;
-export const titleHeader = document.getElementById("preview-title") as HTMLHeadingElement;
-export const modalBodyInner = document.getElementById("preview-body-inner") as HTMLDivElement;
-export const bottomBar = document.getElementById("bottom-bar") as HTMLDivElement;
-export const issuesContainer = document.getElementById("issues-container");
+const hasDocument = typeof document !== "undefined";
+export const modal = hasDocument ? (document.getElementById("preview-modal") as HTMLDivElement) : (null as unknown as HTMLDivElement);
+export const titleAnchor = hasDocument ? (document.getElementById("preview-title-anchor") as HTMLAnchorElement) : (null as unknown as HTMLAnchorElement);
+export const titleHeader = hasDocument ? (document.getElementById("preview-title") as HTMLHeadingElement) : (null as unknown as HTMLHeadingElement);
+export const modalBodyInner = hasDocument ? (document.getElementById("preview-body-inner") as HTMLDivElement) : (null as unknown as HTMLDivElement);
+export const bottomBar = hasDocument ? (document.getElementById("bottom-bar") as HTMLDivElement) : (null as unknown as HTMLDivElement);
+export const issuesContainer = hasDocument ? document.getElementById("issues-container") : null;
 
-const closeButton = modal.querySelector(".close-preview") as HTMLButtonElement;
+const closeButton = hasDocument ? (modal?.querySelector(".close-preview") as HTMLButtonElement) : null;
 
-closeButton.addEventListener("click", closeModal);
-document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape") {
-    closeModal();
-  }
-});
+if (closeButton) {
+  closeButton.addEventListener("click", closeModal);
+}
+if (hasDocument) {
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeModal();
+    }
+  });
+}
 
 export function closeModal() {
+  if (!hasDocument || !modal) return;
   modal.classList.remove("active");
   document.body.classList.remove("preview-active");
   issuesContainer?.classList.remove("keyboard-selection");
@@ -26,6 +32,7 @@ export function closeModal() {
 }
 
 export function bottomBarClearLabels() {
+  if (!bottomBar) return;
   const existingClonedLabels = bottomBar.querySelector(".labels.cloned-labels");
   if (existingClonedLabels) {
     bottomBar.removeChild(existingClonedLabels);

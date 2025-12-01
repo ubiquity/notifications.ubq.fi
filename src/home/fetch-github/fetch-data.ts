@@ -8,8 +8,12 @@ import { saveNotificationsToCache, saveAggregatedNotificationsToCache } from "..
 export const organizationImageCache = new Map<string, Blob | null>(); // this should be declared in image related script
 
 // Generalized function to fetch notifications from GitHub
-async function fetchNotifications(): Promise<GitHubNotifications | null> {
-  const providerToken = await getGitHubAccessToken();
+export async function fetchNotifications(options: { token?: string } = {}): Promise<GitHubNotifications | null> {
+  const providerToken = options.token ?? (await getGitHubAccessToken());
+  if (!providerToken) {
+    console.warn("No GitHub access token available");
+    return null;
+  }
   const octokit = new Octokit({ auth: providerToken });
 
   try {
@@ -94,9 +98,9 @@ async function fetchIssueFromPullRequest(pullRequest: GitHubPullRequest, issues:
   if (!pullRequest.body) return null;
 
   // Match the issue reference in the PR body
-  const issueUrlMatch = pullRequest.body.match(/Resolves (https:\/\/github\.com\/(.+?)\/(.+?)\/issues\/(\d+))/);
-  const issueNumberMatch = pullRequest.body.match(/Resolves #(\d+)/);
-  const issueMarkdownLinkMatch = pullRequest.body.match(/Resolves \[\s*#(\d+)\s*\]/);
+  const issueUrlMatch = pullRequest.body.match(/(Resolves|Closes|Fixes)\s+(https:\/\/github\.com\/(.+?)\/(.+?)\/issues\/(\d+))/i);
+  const issueNumberMatch = pullRequest.body.match(/(Resolves|Closes|Fixes)\s+#(\d+)/i);
+  const issueMarkdownLinkMatch = pullRequest.body.match(/(Resolves|Closes|Fixes)\s+\[\s*#(\d+)\s*\]/i);
 
   let apiUrl: string;
 
@@ -106,7 +110,7 @@ async function fetchIssueFromPullRequest(pullRequest: GitHubPullRequest, issues:
     apiUrl = `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}`;
   } else if (issueNumberMatch || issueMarkdownLinkMatch) {
     // Only issue number is provided, construct API URL using current repo info
-    const issueNumber = issueNumberMatch ? issueNumberMatch[1] : issueMarkdownLinkMatch ? issueMarkdownLinkMatch[1] : null;
+    const issueNumber = issueNumberMatch ? issueNumberMatch[2] : issueMarkdownLinkMatch ? issueMarkdownLinkMatch[2] : null;
     if (!issueNumber) return null;
     const pullRequestUrlMatch = pullRequest.url.match(/repos\/(.+?)\/(.+?)\/pulls\/\d+/);
     if (!pullRequestUrlMatch) return null;
@@ -122,12 +126,33 @@ async function fetchIssueFromPullRequest(pullRequest: GitHubPullRequest, issues:
   return issue || null;
 }
 
+async function fetchIssueByApi(issueUrl: string, token: string): Promise<GitHubIssue | null> {
+  try {
+    const response = await fetch(issueUrl, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
+    });
+    if (!response.ok) {
+      console.warn("Failed to fetch issue via API", issueUrl, response.status);
+      return null;
+    }
+    const data = (await response.json()) as GitHubIssue;
+    return data;
+  } catch (error) {
+    console.warn("Error fetching issue via API", issueUrl, error);
+    return null;
+  }
+}
+
 // Function to fetch pull request notifications with related pull request and issue data
 export async function getPullRequestNotifications(
   devpoolRepos: Set<string>,
   notifications: GitHubNotification[],
   pullRequests: GitHubPullRequest[],
-  issues: GitHubIssue[]
+  issues: GitHubIssue[],
+  token: string
 ): Promise<GitHubAggregated[] | null> {
   if (!notifications) return null;
 
@@ -136,26 +161,49 @@ export async function getPullRequestNotifications(
 
   for (const notification of filteredNotifications) {
     const pullRequestUrl = notification.subject.url;
-    const pullRequest = pullRequests.find((pr) => pr.url === pullRequestUrl);
-    if (!pullRequest || pullRequest.draft || pullRequest.state === "closed") {
-      console.log("skipping ", notification.subject.title, "cause draft or closed");
-      continue; // Skip draft or closed pull requests
+    let pullRequest = pullRequests.find((pr) => pr.url === pullRequestUrl) ?? null;
+    if (!pullRequest) {
+      try {
+        const octokit = new Octokit({ auth: token });
+        pullRequest = (await octokit.request("GET /repos/{owner}/{repo}/pulls/{pull_number}", {
+          owner: notification.repository.owner.login,
+          repo: notification.repository.name,
+          pull_number: Number(notification.subject.url.split("/").pop()),
+          headers: { "X-GitHub-Api-Version": "2022-11-28" },
+        })).data as unknown as GitHubPullRequest;
+      } catch (error) {
+        console.log("skipping ", notification.subject.title, "cause PR not found in API", error);
+        continue;
+      }
     }
 
     const issue = await fetchIssueFromPullRequest(pullRequest, issues);
-    if (!issue) {
+    let resolvedIssue = issue;
+    if (!resolvedIssue) {
+      const baseRepoUrl = pullRequest.base?.repo?.url;
+      if (baseRepoUrl && pullRequest.number) {
+        const fallbackIssueUrl = `${baseRepoUrl}/issues/${pullRequest.number}`;
+        resolvedIssue = await fetchIssueByApi(fallbackIssueUrl, token);
+      }
+    }
+    if (!resolvedIssue) {
       console.log("skipping ", notification.subject.title, "cause no associated issue");
       continue; // Skip if no associated issue
     }
 
-    aggregatedData.push({ notification, pullRequest, issue, backlinkCount: 0 });
+    aggregatedData.push({ notification, pullRequest, issue: resolvedIssue, backlinkCount: 0 });
   }
 
   return aggregatedData;
 }
 
 // Function to fetch issue notifications with related issue data
-export function getIssueNotifications(devpoolRepos: Set<string>, notifications: GitHubNotification[], issues: GitHubIssue[]): GitHubAggregated[] | null {
+export async function getIssueNotifications(
+  devpoolRepos: Set<string>,
+  notifications: GitHubNotification[],
+  issues: GitHubIssue[],
+  token: string
+): Promise<GitHubAggregated[] | null> {
   if (!notifications) return null;
 
   const aggregatedData: GitHubAggregated[] = [];
@@ -163,10 +211,13 @@ export function getIssueNotifications(devpoolRepos: Set<string>, notifications: 
 
   for (const notification of filteredNotifications) {
     const issueUrl = notification.subject.url;
-    const issue = issues.find((issue) => issue.url === issueUrl);
-    if (!issue || issue.state === "closed") {
-      console.log("skipping ", notification.subject.title, "cause issue is closed");
-      continue; // Skip closed issues
+    let issue = issues.find((issue) => issue.url === issueUrl);
+    if (!issue) {
+      issue = await fetchIssueByApi(issueUrl, token);
+    }
+    if (!issue) {
+      console.log("skipping ", notification.subject.title, "cause issue not found in fetched list");
+      continue;
     }
 
     aggregatedData.push({ notification, pullRequest: null, issue, backlinkCount: 0 });
@@ -336,14 +387,20 @@ function getIssueRepositorySource(issue: GitHubIssue): string {
 export async function processNotifications(
   notifications: GitHubNotifications,
   pullRequests: GitHubPullRequest[],
-  issues: GitHubIssue[]
+  issues: GitHubIssue[],
+  token?: string
 ): Promise<GitHubAggregated[] | null> {
+  const providerToken = token ?? (await getGitHubAccessToken());
+  if (!providerToken) {
+    console.warn("No GitHub access token available for processing notifications");
+    return null;
+  }
   const devpoolRepos = getDevpoolRepos(pullRequests, issues);
   console.log("devpoolRepos: ", devpoolRepos);
 
   const [pullRequestNotifications, issueNotifications] = await Promise.all([
-    getPullRequestNotifications(devpoolRepos, notifications, pullRequests, issues),
-    getIssueNotifications(devpoolRepos, notifications, issues),
+    getPullRequestNotifications(devpoolRepos, notifications, pullRequests, issues, providerToken),
+    getIssueNotifications(devpoolRepos, notifications, issues, providerToken),
   ]);
 
   if (!pullRequestNotifications && !issueNotifications) return null;

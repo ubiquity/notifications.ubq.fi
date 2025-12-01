@@ -13,6 +13,7 @@
     "dev": "tsx build/esbuild-server.ts",
     "start": "tsx build/esbuild-server.ts",
     "build": "tsx build/esbuild-build.ts",
+    "notifications:cli": "tsx src/cli/notifications-cli.ts",
     "format": "run-s format:lint format:prettier format:cspell",
     "format:lint": "eslint --fix .",
     "format:prettier": "prettier --write .",

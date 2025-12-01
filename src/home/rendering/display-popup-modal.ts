@@ -1,6 +1,11 @@
 import { toolbar } from "../ready-toolbar";
 import { modal, modalBodyInner, titleAnchor, titleHeader } from "./render-preview-modal";
 export function displayPopupMessage({ modalHeader, modalBody, isError, url }: { modalHeader: string; modalBody: string; isError: boolean; url?: string }) {
+  if (!modal || !titleHeader || !modalBodyInner || typeof document === "undefined") {
+    // Non-DOM environment: log instead of rendering
+    console[isError ? "error" : "log"]({ modalHeader, modalBody, url });
+    return;
+  }
   titleHeader.textContent = modalHeader;
   if (url) {
     titleAnchor.href = url;
