@@ -1,36 +1,36 @@
-import 'fake-indexeddb/auto';
-import { saveNotificationsToCache, getNotificationsFromCache, clearNotificationsCache } from '../src/home/getters/get-indexed-db';
-import { GitHubNotifications } from '../src/home/github-types';
+import "fake-indexeddb/auto";
+import { saveNotificationsToCache, getNotificationsFromCache, clearNotificationsCache } from "../src/home/getters/get-indexed-db";
+import { GitHubNotifications } from "../src/home/github-types";
 
-describe('IndexedDB cache functions', () => {
+describe("IndexedDB cache functions", () => {
   beforeEach(async () => {
     await clearNotificationsCache();
   });
 
-  it('saves and retrieves notifications with TTL', async () => {
+  it("saves and retrieves notifications with TTL", async () => {
     const cached: GitHubNotifications = [];
     const fetched = [
       {
-        id: '1',
-        reason: 'review_requested',
+        id: "1",
+        reason: "review_requested",
         subject: {
-          title: 'Test',
-          url: 'https://api.github.com/repos/owner/repo/pulls/123',
-          type: 'PullRequest',
-          latest_comment_url: 'https://api.github.com/repos/owner/repo/issues/comments/1',
+          title: "Test",
+          url: "https://api.github.com/repos/owner/repo/pulls/123",
+          type: "PullRequest",
+          latest_comment_url: "https://api.github.com/repos/owner/repo/issues/comments/1",
         },
-        repository: { full_name: 'owner/repo' },
-        updated_at: '2023-01-01T00:00:00Z',
+        repository: { full_name: "owner/repo" },
+        updated_at: "2023-01-01T00:00:00Z",
       },
     ] as unknown as GitHubNotifications;
 
     await saveNotificationsToCache(cached, fetched);
     const result = await getNotificationsFromCache();
     expect(result.length).toBe(1);
-    expect(result[0].id).toBe('1');
+    expect(result[0].id).toBe("1");
   });
 
-  it('filters out expired items', async () => {
+  it("filters out expired items", async () => {
     // Mock time to make item expired
     const realNow = Date.now;
     Date.now = jest.fn(() => realNow() + 2 * 60 * 60 * 1000); // 2 hours later
@@ -41,19 +41,19 @@ describe('IndexedDB cache functions', () => {
     Date.now = realNow;
   });
 
-  it('removes stale notifications', async () => {
+  it("removes stale notifications", async () => {
     const cached = [
       {
-        id: 'old',
-        reason: 'review_requested',
+        id: "old",
+        reason: "review_requested",
         subject: {
-          title: 'Old',
-          url: 'https://api.github.com/repos/owner/repo/pulls/456',
-          type: 'PullRequest',
-          latest_comment_url: 'https://api.github.com/repos/owner/repo/issues/comments/2',
+          title: "Old",
+          url: "https://api.github.com/repos/owner/repo/pulls/456",
+          type: "PullRequest",
+          latest_comment_url: "https://api.github.com/repos/owner/repo/issues/comments/2",
         },
-        repository: { full_name: 'owner/repo' },
-        updated_at: '2023-01-01T00:00:00Z',
+        repository: { full_name: "owner/repo" },
+        updated_at: "2023-01-01T00:00:00Z",
       },
     ] as unknown as GitHubNotifications;
     const fetched: GitHubNotifications = []; // old one not in fetched
@@ -63,7 +63,7 @@ describe('IndexedDB cache functions', () => {
     expect(result.length).toBe(0);
   });
 
-  it('clears cache', async () => {
+  it("clears cache", async () => {
     await clearNotificationsCache();
     const result = await getNotificationsFromCache();
     expect(result.length).toBe(0);

@@ -46,6 +46,18 @@ describe("renderNotifications", () => {
   beforeEach(() => {
     document.body.innerHTML = '<div id="issues-container"></div>';
     window.scrollTo = jest.fn();
+    class NoopIntersectionObserver implements IntersectionObserver {
+      readonly root: Element | null = null;
+      readonly rootMargin = "";
+      readonly thresholds: ReadonlyArray<number> = [];
+      disconnect(): void {}
+      observe(): void {}
+      unobserve(): void {}
+      takeRecords(): IntersectionObserverEntry[] {
+        return [];
+      }
+    }
+    globalThis.IntersectionObserver = NoopIntersectionObserver as unknown as typeof IntersectionObserver;
     const fetchMock = jest.fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>().mockResolvedValue({
       json: jest.fn().mockResolvedValue({
         user: { login: "testuser", type: "User", avatar_url: "https://example.com/avatar.png" },
@@ -91,9 +103,6 @@ describe("renderNotifications", () => {
     ] as unknown as GitHubAggregated[];
 
     await renderNotifications(notifications, true);
-    // Debug output to verify rendered structure during tests
-    // eslint-disable-next-line no-console
-    console.log(document.body.innerHTML);
     const elements = document.querySelectorAll(".issue-element-inner");
     expect(elements.length).toBe(1);
   });

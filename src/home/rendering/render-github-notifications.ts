@@ -46,6 +46,10 @@ export async function renderNotifications(notifications: GitHubAggregated[], ski
     async (entries) => {
       for (const entry of entries) {
         if (!entry.isIntersecting) continue;
+        if (!providerToken) {
+          observer.unobserve(entry.target);
+          continue;
+        }
         const issueElement = entry.target as HTMLElement;
         const id = issueElement.getAttribute("data-issue-id");
         if (id && !viewedNotifications.has(id)) {
