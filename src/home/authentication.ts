@@ -3,6 +3,7 @@ import { getGitHubUser } from "./getters/get-github-user";
 import { GitHubUser } from "./github-types";
 import { displayGitHubUserInformation } from "./rendering/display-github-user-information";
 import { renderGitHubLoginButton } from "./rendering/render-github-login-button";
+import { handleAuthFailure } from "./auth/handle-auth-failure";
 
 export async function authentication() {
   if (!navigator.onLine) {
@@ -18,5 +19,7 @@ export async function authentication() {
   const gitHubUser: null | GitHubUser = await getGitHubUser();
   if (accessToken && gitHubUser) {
     await displayGitHubUserInformation(gitHubUser);
+  } else if (accessToken && !gitHubUser) {
+    await handleAuthFailure("auth user fetch failed");
   }
 }

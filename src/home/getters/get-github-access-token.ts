@@ -23,6 +23,11 @@ export async function getGitHubAccessToken(): Promise<string | null> {
   return null;
 }
 
+export function clearStoredSession() {
+  if (typeof localStorage === "undefined") return;
+  localStorage.removeItem(`sb-${storageKey}-auth-token`);
+}
+
 export function getGitHubUserName(): string | null {
   const oauthToken = getLocalStore<OAuthToken>(`sb-${storageKey}-auth-token`);
 

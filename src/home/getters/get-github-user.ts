@@ -4,6 +4,7 @@ import { handleRateLimit } from "../fetch-github/handle-rate-limit";
 import { GitHubUser, GitHubUserResponse } from "../github-types";
 import { OAuthToken } from "./get-github-access-token";
 import { getLocalStore } from "./get-local-store";
+import { handleAuthFailure } from "../auth/handle-auth-failure";
 declare const SUPABASE_STORAGE_KEY: string; // @DEV: passed in at build time check build/esbuild-build.ts
 
 export async function getGitHubUser(): Promise<GitHubUser | null> {
@@ -41,8 +42,13 @@ async function getNewGitHubUser(providerToken: string | null): Promise<GitHubUse
     const response = (await octokit.request("GET /user")) as GitHubUserResponse;
     return response.data;
   } catch (error) {
-    if (!!error && typeof error === "object" && "status" in error && error.status === 403) {
-      await handleRateLimit(providerToken ? octokit : undefined, error as RequestError);
+    if (error instanceof RequestError) {
+      if (error.status === 403) {
+        await handleRateLimit(providerToken ? octokit : undefined, error);
+      }
+      if (error.status === 401 || /bad credentials/i.test(error.message)) {
+        await handleAuthFailure("GET /user");
+      }
     }
     console.warn("You have been logged out. Please login again.", error);
   }

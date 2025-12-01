@@ -5,6 +5,7 @@ import { resolveViewerLogin } from "../getters/get-viewer-login";
 import { GitHubAggregated, GitHubIssue, GitHubLabel, GitHubNotification, GitHubNotifications, GitHubPullRequest } from "../github-types";
 import { handleRateLimit } from "./handle-rate-limit";
 import { saveNotificationsToCache, saveAggregatedNotificationsToCache } from "../getters/get-indexed-db";
+import { handleAuthFailure } from "../auth/handle-auth-failure";
 
 export const organizationImageCache = new Map<string, Blob | null>(); // this should be declared in image related script
 
@@ -32,8 +33,14 @@ export async function fetchNotifications(options: { token?: string } = {}): Prom
     console.log("unfiltered", notifications);
     return notifications;
   } catch (error) {
-    if (error instanceof RequestError && error.status === 403) {
-      await handleRateLimit(octokit, error);
+    if (error instanceof RequestError) {
+      const isBadCredentials = error.status === 401 || /bad credentials/i.test(error.message);
+      if (error.status === 403 && !isBadCredentials) {
+        await handleRateLimit(octokit, error);
+      }
+      if (isBadCredentials) {
+        await handleAuthFailure("GET /notifications");
+      }
     }
     console.warn("error fetching notifications:", error);
   }
@@ -382,6 +389,9 @@ async function filterOwnLatestCommentNotifications(aggregated: GitHubAggregated[
           },
         });
         if (!response.ok) {
+          if (response.status === 401) {
+            await handleAuthFailure("latest comment fetch");
+          }
           console.warn("Latest comment fetch failed", latestUrl, response.status);
           return item;
         }
