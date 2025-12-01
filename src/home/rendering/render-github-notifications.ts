@@ -1,6 +1,7 @@
 import { Octokit } from "@octokit/rest";
 import { organizationImageCache } from "../fetch-github/fetch-data";
 import { getGitHubAccessToken } from "../getters/get-github-access-token";
+import { resolveViewerLogin } from "../getters/get-viewer-login";
 import { getLocalStore, setLocalStore } from "../getters/get-local-store";
 import { GitHubAggregated, GitHubLabel } from "../github-types";
 import { notificationsContainer, shouldShowBotNotifications, shouldAutoMarkNotifications } from "../home";
@@ -428,6 +429,7 @@ function setUpIssueElement(
 
 async function fetchLatestComments(notifications: GitHubAggregated[]) {
   const providerToken = await getGitHubAccessToken();
+  const viewerLogin = await resolveViewerLogin(providerToken);
   const commentsMap = new Map<string, { userType: string; url: string; avatarUrl: string; commentBody: string; isSlashCommand: boolean }>();
 
   await Promise.all(
@@ -438,6 +440,7 @@ async function fetchLatestComments(notifications: GitHubAggregated[]) {
       let avatarUrl = "";
       let commentBody = subject.title || DEFAULT_LATEST_COMMENT;
       let isSlashCommand = false;
+      let authorLogin = "";
 
       if (subject.latest_comment_url) {
         try {
@@ -447,13 +450,20 @@ async function fetchLatestComments(notifications: GitHubAggregated[]) {
           if (!response.ok) {
             console.warn("Latest comment fetch failed", subject.latest_comment_url, response.status);
           } else {
-            const data: { user?: { type?: string; avatar_url?: string }; html_url?: string; body?: string } = await response.json();
+            const data: { user?: { type?: string; avatar_url?: string; login?: string }; html_url?: string; body?: string } = await response.json();
             userType = data.user?.type || "";
             url = data.html_url || url;
             avatarUrl = data.user?.avatar_url || avatarUrl;
+            authorLogin = (data.user?.login || "").toLowerCase();
             const rawBody = data.body || "";
             isSlashCommand = rawBody.trim().startsWith("/");
             commentBody = rawBody || commentBody;
+          }
+
+          const isOwnComment = Boolean(viewerLogin && authorLogin && viewerLogin === authorLogin);
+          if (isOwnComment) {
+            console.log("skipping ", subject.title, " because latest comment is by current user");
+            return;
           }
 
           // Check if commentBody contains HTML

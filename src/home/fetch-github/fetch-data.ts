@@ -1,6 +1,7 @@
 import { RequestError } from "@octokit/request-error";
 import { Octokit } from "@octokit/rest";
 import { getGitHubAccessToken } from "../getters/get-github-access-token";
+import { resolveViewerLogin } from "../getters/get-viewer-login";
 import { GitHubAggregated, GitHubIssue, GitHubLabel, GitHubNotification, GitHubNotifications, GitHubPullRequest } from "../github-types";
 import { handleRateLimit } from "./handle-rate-limit";
 import { saveNotificationsToCache, saveAggregatedNotificationsToCache } from "../getters/get-indexed-db";
@@ -365,6 +366,41 @@ function getIssueRepositorySource(issue: GitHubIssue): string {
   return urls.repository_url ?? urls.html_url ?? urls.url ?? "";
 }
 
+async function filterOwnLatestCommentNotifications(aggregated: GitHubAggregated[], token: string): Promise<GitHubAggregated[]> {
+  const viewerLogin = await resolveViewerLogin(token);
+  if (!viewerLogin) return aggregated;
+
+  const results = await Promise.all(
+    aggregated.map(async (item) => {
+      const latestUrl = item.notification.subject.latest_comment_url;
+      if (!latestUrl) return item;
+      try {
+        const response = await fetch(latestUrl, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "X-GitHub-Api-Version": "2022-11-28",
+          },
+        });
+        if (!response.ok) {
+          console.warn("Latest comment fetch failed", latestUrl, response.status);
+          return item;
+        }
+        const data: { user?: { login?: string } } = await response.json();
+        const authorLogin = data.user?.login ? data.user.login.toLowerCase() : "";
+        if (authorLogin && authorLogin === viewerLogin) {
+          console.log("skipping ", item.notification.subject.title, "because latest comment is by current user");
+          return null;
+        }
+      } catch (error) {
+        console.warn("Failed to fetch latest comment", latestUrl, error);
+      }
+      return item;
+    })
+  );
+
+  return results.filter((item): item is GitHubAggregated => item !== null);
+}
+
 // Process notifications into aggregated data
 export async function processNotifications(
   notifications: GitHubNotifications,
@@ -412,14 +448,16 @@ export async function processNotifications(
     console.log("no priority labels found; showing all notifications as fallback");
   }
 
-  for (const aggregated of filteredNotifications) {
+  const withoutOwnComments = providerToken ? await filterOwnLatestCommentNotifications(filteredNotifications, providerToken) : filteredNotifications;
+
+  for (const aggregated of withoutOwnComments) {
     // count backlinks
     const backlinkCount = countBacklinks(aggregated, pullRequests, issues);
     aggregated.backlinkCount = backlinkCount;
   }
 
-  console.log("filteredNotifications", filteredNotifications);
-  return filteredNotifications;
+  console.log("filteredNotifications", withoutOwnComments);
+  return withoutOwnComments;
 }
 
 // Fetch all notifications and return them as an array of aggregated data
