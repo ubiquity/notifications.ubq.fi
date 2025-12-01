@@ -21,7 +21,11 @@ jest.mock("@octokit/rest", () => ({
   },
 }));
 jest.mock("@octokit/request-error", () => {
-  return { RequestError: class RequestError extends Error { status?: number } };
+  return {
+    RequestError: class RequestError extends Error {
+      status?: number;
+    },
+  };
 });
 
 import * as indexedDb from "../src/home/getters/get-indexed-db";
