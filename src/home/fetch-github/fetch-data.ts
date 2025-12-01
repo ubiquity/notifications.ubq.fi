@@ -228,6 +228,36 @@ export async function getIssueNotifications(
   return aggregatedData;
 }
 
+function extractOwnerRepo(source: string | null | undefined): { owner?: string; repo?: string } {
+  if (!source) return {};
+  let owner: string | undefined;
+  let repo: string | undefined;
+
+  if (source.includes("api.github.com")) {
+    const match = source.match(/repos\/([^/]+)\/([^/]+)(?:\/|$)/);
+    if (match) {
+      owner = match[1];
+      repo = match[2];
+    }
+  } else if (source.includes("github.com")) {
+    const match = source.match(/github\.com\/([^/]+)\/([^/]+)(?:\/|$)/);
+    if (match) {
+      owner = match[1];
+      repo = match[2];
+    }
+  }
+
+  if ((!owner || !repo) && source) {
+    const parts = source.split("/").filter(Boolean);
+    if (parts.length >= 2) {
+      owner = owner ?? parts[parts.length - 2];
+      repo = repo ?? parts[parts.length - 1];
+    }
+  }
+
+  return { owner, repo };
+}
+
 function countBacklinks(aggregated: GitHubAggregated, allPullRequests: GitHubPullRequest[], allIssues: GitHubIssue[]): number {
   let issueNumber: number | null = null;
   let issueUrl: string | null = null;
@@ -288,18 +318,7 @@ function countBacklinks(aggregated: GitHubAggregated, allPullRequests: GitHubPul
 
   // check backlinks in pull requests
   for (const pr of allPullRequests) {
-    const baseRepoUrl = pr.base?.repo?.url;
-    let prOwner: string | undefined;
-    let prRepo: string | undefined;
-    if (baseRepoUrl) {
-      [prOwner, prRepo] = baseRepoUrl.split("/").slice(-2);
-    } else {
-      const match = pr.url.match(/repos\/(.+?)\/(.+?)\//);
-      if (match) {
-        prOwner = match[1];
-        prRepo = match[2];
-      }
-    }
+    const { owner: prOwner, repo: prRepo } = extractOwnerRepo(pr.base?.repo?.url ?? pr.url);
     if (prOwner && prRepo) {
       totalCount += countMatches(pr.body, prRepo, prOwner);
     }
@@ -307,27 +326,7 @@ function countBacklinks(aggregated: GitHubAggregated, allPullRequests: GitHubPul
 
   // check backlinks in issues
   for (const issue of allIssues) {
-    const source = getIssueRepositorySource(issue);
-    let issueOwner: string | undefined;
-    let issueRepo: string | undefined;
-    if (source.includes("api.github.com")) {
-      const match = source.match(/repos\/([^/]+)\/([^/]+)(?:\/|$)/);
-      if (match) {
-        issueOwner = match[1];
-        issueRepo = match[2];
-      }
-    } else if (source.includes("github.com")) {
-      const match = source.match(/github\.com\/([^/]+)\/([^/]+)(?:\/|$)/);
-      if (match) {
-        issueOwner = match[1];
-        issueRepo = match[2];
-      }
-    }
-    if ((!issueOwner || !issueRepo) && source) {
-      const parts = source.split("/").filter(Boolean);
-      issueOwner = issueOwner ?? parts[parts.length - 2];
-      issueRepo = issueRepo ?? parts[parts.length - 1];
-    }
+    const { owner: issueOwner, repo: issueRepo } = extractOwnerRepo(getIssueRepositorySource(issue));
     if (!issueOwner || !issueRepo) continue;
     totalCount += countMatches(issue.body ?? null, issueRepo, issueOwner);
   }
@@ -339,41 +338,15 @@ function getDevpoolRepos(pullRequests: GitHubPullRequest[], issues: GitHubIssue[
   const uniqueNames = new Set<string>();
 
   for (const pullRequest of pullRequests) {
-    const baseRepoUrl = pullRequest.base?.repo?.url;
-    if (baseRepoUrl) {
-      const [ownerName, repoName] = baseRepoUrl.split("/").slice(-2);
-      uniqueNames.add(`${ownerName}/${repoName}`);
-    } else {
-      const match = pullRequest.url.match(/repos\/(.+?)\/(.+?)\//);
-      if (match) {
-        uniqueNames.add(`${match[1]}/${match[2]}`);
-      }
+    const { owner, repo } = extractOwnerRepo(pullRequest.base?.repo?.url ?? pullRequest.url);
+    if (owner && repo) {
+      uniqueNames.add(`${owner}/${repo}`);
     }
   }
 
   for (const issue of issues) {
-    const source = getIssueRepositorySource(issue);
-    let issueOwner: string | undefined;
-    let issueRepo: string | undefined;
-    if (source.includes("api.github.com")) {
-      const match = source.match(/repos\/([^/]+)\/([^/]+)(?:\/|$)/);
-      if (match) {
-        issueOwner = match[1];
-        issueRepo = match[2];
-      }
-    } else if (source.includes("github.com")) {
-      const match = source.match(/github\.com\/([^/]+)\/([^/]+)(?:\/|$)/);
-      if (match) {
-        issueOwner = match[1];
-        issueRepo = match[2];
-      }
-    }
-    if ((!issueOwner || !issueRepo) && source) {
-      const parts = source.split("/").filter(Boolean);
-      issueOwner = issueOwner ?? parts[parts.length - 2];
-      issueRepo = issueRepo ?? parts[parts.length - 1];
-    }
-    if (issueOwner && issueRepo) uniqueNames.add(`${issueOwner}/${issueRepo}`);
+    const { owner, repo } = extractOwnerRepo(getIssueRepositorySource(issue));
+    if (owner && repo) uniqueNames.add(`${owner}/${repo}`);
   }
   return uniqueNames;
 }

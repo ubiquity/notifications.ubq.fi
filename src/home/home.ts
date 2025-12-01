@@ -65,7 +65,7 @@ function renderTestModeToast() {
   if (existing) return;
   const toast = document.createElement("div");
   toast.id = "test-mode-toast";
-  toast.textContent = "Test mode: mark-as-read disabled off ubq.fi";
+  toast.textContent = "Test mode: mark-as-read disabled outside ubq.fi";
   toast.style.position = "fixed";
   toast.style.bottom = "12px";
   toast.style.left = "12px";

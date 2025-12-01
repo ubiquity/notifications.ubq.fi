@@ -12,6 +12,11 @@ const DB_VERSION = 2;
 const NOTIFICATIONS_STORE = "notifications";
 const AGGREGATED_STORE = "aggregatedNotifications";
 const META_KEY = "meta";
+interface CacheMetaRecord {
+  id: typeof META_KEY;
+  cachedAt: number;
+  expiresAt: number;
+}
 
 // this file contains functions to save and retrieve issues/images from IndexedDB which is client-side in-browser storage
 export async function saveImageToCache({
@@ -105,8 +110,8 @@ async function openNotificationsDB(): Promise<IDBDatabase> {
 }
 
 function putMeta(store: IDBObjectStore, now: number) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (store as any).put({ id: META_KEY, cachedAt: now, expiresAt: now + CACHE_TTL_MS });
+  const meta: CacheMetaRecord = { id: META_KEY, cachedAt: now, expiresAt: now + CACHE_TTL_MS };
+  store.put(meta);
 }
 
 // Saves fetched notifications into IndexedDB with TTL (overwrites prior cache)

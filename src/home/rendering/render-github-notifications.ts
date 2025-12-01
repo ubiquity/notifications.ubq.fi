@@ -16,12 +16,35 @@ const REQUEST_INTERVAL = 200; // ~5 requests/sec
 const RETRY_DELAY_MS = 5000;
 let isProcessingQueue = false;
 
+function clearContainerPreserveIndicator() {
+  const indicator = notificationsContainer.querySelector(".pull-refresh-indicator");
+  notificationsContainer.classList.remove("ready");
+  Array.from(notificationsContainer.children).forEach((child) => {
+    if (child !== indicator) {
+      child.remove();
+    }
+  });
+}
+
+function hasRenderedNotifications() {
+  return notificationsContainer.querySelector(".issue-element-inner") !== null;
+}
+
 function persistViewedNotifications() {
   setLocalStore("viewed-notifications", Array.from(viewedNotifications));
 }
 
 function persistPendingMarks() {
   setLocalStore("pending-mark-ids", Array.from(pendingMarkIds));
+}
+
+function removeNotificationElement(element: HTMLElement) {
+  const wrapper = element.parentElement;
+  if (wrapper) {
+    wrapper.remove();
+  } else {
+    element.remove();
+  }
 }
 
 function addInlineMarkError(element: HTMLElement) {
@@ -78,6 +101,7 @@ async function processMarkQueue(octokit: Octokit) {
       dropPendingMark(id);
       element.classList.add("marked-read");
       element.setAttribute("aria-busy", "false");
+      removeNotificationElement(element);
     } catch (error) {
       console.error("Failed to mark notification as read on view:", error);
       addInlineMarkError(element);
@@ -103,8 +127,7 @@ export async function renderNotifications(notifications: GitHubAggregated[], ski
   const octokit = providerToken ? new Octokit({ auth: providerToken }) : null;
 
   if (notificationsContainer.classList.contains("ready")) {
-    notificationsContainer.classList.remove("ready");
-    notificationsContainer.innerHTML = "";
+    clearContainerPreserveIndicator();
   }
   const existingNotificationIds = new Set(
     Array.from(notificationsContainer.querySelectorAll(".issue-element-inner")).map((element) => (element as HTMLElement).getAttribute("data-issue-id"))
@@ -185,7 +208,7 @@ export async function renderNotifications(notifications: GitHubAggregated[], ski
   notificationsContainer.classList.add("ready");
 
   // Check if notificationsContainer has no children and render empty message if true
-  if (notificationsContainer.children.length === 0) {
+  if (!hasRenderedNotifications()) {
     await renderEmpty();
   }
 
@@ -195,8 +218,7 @@ export async function renderNotifications(notifications: GitHubAggregated[], ski
 
 export async function renderEmpty() {
   if (notificationsContainer.classList.contains("ready")) {
-    notificationsContainer.classList.remove("ready");
-    notificationsContainer.innerHTML = "";
+    clearContainerPreserveIndicator();
   }
   const issueWrapper = document.createElement("div");
   const issueElement = document.createElement("div");
@@ -394,6 +416,7 @@ function setUpIssueElement(
         dropPendingMark(threadId);
         issueElement.classList.add("marked-read");
         issueElement.setAttribute("aria-busy", "false");
+        removeNotificationElement(issueElement);
       }
     } catch (error) {
       console.error("Failed to mark notification as read:", error);

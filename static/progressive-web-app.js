@@ -142,6 +142,7 @@ async function handleApiRequest(request) {
 async function cacheApiResponse(request, response) {
   const cache = await caches.open(apiCacheName);
   const headers = new Headers(response.headers);
+  // Track when the response was fetched so isApiCacheStale() can enforce TTL on cached API calls.
   headers.set("sw-fetched-at", Date.now().toString());
   const buffer = await response.arrayBuffer();
   const responseToCache = new Response(buffer, {
