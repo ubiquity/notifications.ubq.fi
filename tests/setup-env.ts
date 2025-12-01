@@ -30,7 +30,10 @@ class MockIntersectionObserver implements IntersectionObserver {
   readonly rootMargin = "";
   readonly thresholds: ReadonlyArray<number> = [];
 
-  constructor(private readonly _callback: IntersectionObserverCallback = () => {}, options?: IntersectionObserverInit) {
+  constructor(
+    private readonly _callback: IntersectionObserverCallback = () => {},
+    options?: IntersectionObserverInit
+  ) {
     void options;
   }
 
@@ -41,7 +44,9 @@ class MockIntersectionObserver implements IntersectionObserver {
   unobserve(target: Element): void {
     void target;
   }
-  takeRecords(): IntersectionObserverEntry[] { return []; }
+  takeRecords(): IntersectionObserverEntry[] {
+    return [];
+  }
 }
 globalThis.IntersectionObserver = MockIntersectionObserver;
 
