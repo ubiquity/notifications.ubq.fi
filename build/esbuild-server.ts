@@ -10,9 +10,11 @@ export async function server() {
   const _context = await esbuild.context(esBuildContext);
   // Enable watch mode so builds re-run on file changes during development
   await _context.watch();
+  const preferredPort = Number(process.env.PORT) || 8080;
+
   const { port } = await _context.serve({
     servedir: "static",
-    port: 8080,
+    port: preferredPort,
     host: "0.0.0.0",
   });
 

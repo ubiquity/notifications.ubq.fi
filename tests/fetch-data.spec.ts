@@ -16,6 +16,7 @@ jest.mock("@supabase/supabase-js", () => ({
 
 jest.mock("../src/home/getters/get-indexed-db", () => ({
   saveNotificationsToCache: jest.fn().mockResolvedValue(undefined),
+  saveAggregatedNotificationsToCache: jest.fn().mockResolvedValue(undefined),
 }));
 jest.mock("../src/home/getters/get-github-access-token", () => ({
   getGitHubAccessToken: jest.fn(() => null),
@@ -25,7 +26,7 @@ jest.mock("../src/home/getters/get-github-access-token", () => ({
 
 import { fetchIssues, fetchPullRequests, fetchAllNotifications, processNotifications, getIssueNotifications } from "../src/home/fetch-github/fetch-data";
 import { GitHubIssue, GitHubLabel, GitHubNotification, GitHubNotifications, GitHubPullRequest } from "../src/home/github-types";
-import { saveNotificationsToCache } from "../src/home/getters/get-indexed-db";
+import { saveNotificationsToCache, saveAggregatedNotificationsToCache } from "../src/home/getters/get-indexed-db";
 
 describe("fetch-data helpers", () => {
   const realFetch = testGlobals.fetch;
@@ -160,6 +161,7 @@ describe("fetch-data helpers", () => {
 
     const result = await fetchAllNotifications();
     expect(saveNotificationsToCache).toHaveBeenCalled();
+    expect(saveAggregatedNotificationsToCache).toHaveBeenCalled();
     // With empty notifications from Octokit stub, returns []
     expect(result).toEqual([]);
   });

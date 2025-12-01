@@ -3,7 +3,7 @@ import { Octokit } from "@octokit/rest";
 import { getGitHubAccessToken } from "../getters/get-github-access-token";
 import { GitHubAggregated, GitHubIssue, GitHubLabel, GitHubNotification, GitHubNotifications, GitHubPullRequest } from "../github-types";
 import { handleRateLimit } from "./handle-rate-limit";
-import { saveNotificationsToCache } from "../getters/get-indexed-db";
+import { saveNotificationsToCache, saveAggregatedNotificationsToCache } from "../getters/get-indexed-db";
 
 export const organizationImageCache = new Map<string, Blob | null>(); // this should be declared in image related script
 
@@ -19,7 +19,7 @@ async function fetchNotifications(): Promise<GitHubNotifications | null> {
           "X-GitHub-Api-Version": "2022-11-28",
         },
         all: false, // Only get unread notifications
-        participating: true, // Only get notifications in which the user is directly participating
+        participating: false, // include all unread, not just participating
       })
     ).data as GitHubNotifications;
     console.log("unfiltered", notifications);
@@ -67,26 +67,16 @@ export async function fetchPullRequests(): Promise<GitHubPullRequest[]> {
   }
 }
 
-// Pre-filter notifications by general rules (repo filtering and ignoring CI activity)
 function preFilterNotifications(devpoolRepos: Set<string>, notifications: GitHubNotification[]): GitHubNotifications {
+  const isAllowAllRepos = devpoolRepos.size === 0; // fallback when directory data fails to load
   return notifications.filter((notification) => {
-    // Ignore based on reason
-    if (
-      ["comment", "ci_activity", "invitation", "member_feature_requested", "security_advisory_credit", "state_change", "team_mention"].includes(
-        notification.reason
-      )
-    ) {
-      console.log("skipping ", notification.subject.title, "cause of reason", notification.reason);
-      return false;
-    }
-
-    // Ignore notifications from repos that are not in devpoolRepos
+    // Ignore notifications from repos that are not in devpoolRepos (unless directory data unavailable)
     const repoName = notification.repository.full_name;
-    if (!devpoolRepos.has(repoName)) {
+    if (!isAllowAllRepos && !devpoolRepos.has(repoName)) {
       console.log("skipping ", notification.subject.title, "cause of repo", repoName);
       return false;
     }
-    return devpoolRepos.has(repoName);
+    return isAllowAllRepos || devpoolRepos.has(repoName);
   });
 }
 
@@ -360,32 +350,28 @@ export async function processNotifications(
 
   const allNotifications = [...(pullRequestNotifications || []), ...(issueNotifications || [])];
 
-  // filter notifs with priority label
-  const filteredNotifications = allNotifications.filter((aggregated) => {
-    if (!aggregated.issue || !aggregated.issue.labels) {
-      // skip if no issue or labels
-      console.log("skipping ", aggregated.notification.subject.title, "cause no labels or issue");
-      return false;
-    }
+  // filter notifs with priority label (case-insensitive, allow flexible spacing) from issue or PR labels
+  const priorityNotifications = allNotifications.filter((aggregated) => {
+    const labelSource = aggregated.issue?.labels || aggregated.pullRequest?.labels;
+    if (!labelSource) return false;
 
-    const isSuccess = aggregated.issue.labels.some((label: GitHubLabel) => {
-      if (typeof label === "string" || !label.name) {
-        return false;
-      }
-
-      const match = label.name.match(/^(Priority): /);
-      if (match) {
-        return true;
-      }
-
-      return false;
+    const hasPriority = labelSource.some((label: GitHubLabel) => {
+      if (typeof label === "string") return /priority\s*:\s*/i.test(label);
+      if (!label?.name) return false;
+      return /priority\s*:\s*/i.test(label.name);
     });
 
-    if (!isSuccess) {
+    if (!hasPriority) {
       console.log("skipping ", aggregated.notification.subject.title, "cause no priority label");
     }
-    return isSuccess;
+    return hasPriority;
   });
+
+  // If none carry a priority label, fall back to all so the UI is not empty
+  const filteredNotifications = priorityNotifications.length > 0 ? priorityNotifications : allNotifications;
+  if (priorityNotifications.length === 0) {
+    console.log("no priority labels found; showing all notifications as fallback");
+  }
 
   for (const aggregated of filteredNotifications) {
     // count backlinks
@@ -403,8 +389,9 @@ export async function fetchAllNotifications(): Promise<GitHubAggregated[] | null
   const [notifications, pullRequests, issues] = await Promise.all([fetchNotifications(), fetchPullRequests(), fetchIssues()]);
   if (!notifications || !pullRequests || !issues) return null;
 
-  // Save fetched notifications to IndexedDB cache
-  await saveNotificationsToCache([], notifications);
+  const aggregated = await processNotifications(notifications, pullRequests, issues);
+  // Save fetched notifications and aggregated view to IndexedDB cache
+  await Promise.all([saveNotificationsToCache(notifications), saveAggregatedNotificationsToCache(aggregated ?? [])]);
 
-  return processNotifications(notifications, pullRequests, issues);
+  return aggregated;
 }

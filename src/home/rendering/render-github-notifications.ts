@@ -3,14 +3,104 @@ import { organizationImageCache } from "../fetch-github/fetch-data";
 import { getGitHubAccessToken } from "../getters/get-github-access-token";
 import { getLocalStore, setLocalStore } from "../getters/get-local-store";
 import { GitHubAggregated, GitHubLabel } from "../github-types";
-import { notificationsContainer, shouldShowBotNotifications } from "../home";
+import { notificationsContainer, shouldShowBotNotifications, shouldAutoMarkNotifications } from "../home";
 import { getTimeAgo } from "./utils";
 
 // Track viewed notifications to avoid re-marking
 const viewedNotifications = new Set<string>(getLocalStore<string[]>("viewed-notifications") ?? []);
+const pendingMarkIds = new Set<string>(getLocalStore<string[]>("pending-mark-ids") ?? []);
+
+type MarkQueueItem = { id: string; element: HTMLElement };
+const markQueue: MarkQueueItem[] = [];
+const REQUEST_INTERVAL = 200; // ~5 requests/sec
+const RETRY_DELAY_MS = 5000;
+let isProcessingQueue = false;
+
+function persistViewedNotifications() {
+  setLocalStore("viewed-notifications", Array.from(viewedNotifications));
+}
+
+function persistPendingMarks() {
+  setLocalStore("pending-mark-ids", Array.from(pendingMarkIds));
+}
+
+function addInlineMarkError(element: HTMLElement) {
+  const labels = element.querySelector(".labels");
+  if (!labels) return;
+  const hasExisting = labels.querySelector(".mark-error");
+  if (hasExisting) return;
+  const label = document.createElement("label");
+  label.className = "mark-error";
+  label.textContent = "Retrying mark as read…";
+  labels.appendChild(label);
+}
+
+function dropPendingMark(id: string) {
+  pendingMarkIds.delete(id);
+  for (let i = markQueue.length - 1; i >= 0; i -= 1) {
+    if (markQueue[i].id === id) {
+      markQueue.splice(i, 1);
+    }
+  }
+  persistPendingMarks();
+}
+
+function enqueueMarkRequest(id: string, element: HTMLElement) {
+  if (viewedNotifications.has(id)) return;
+  if (!pendingMarkIds.has(id)) {
+    pendingMarkIds.add(id);
+    persistPendingMarks();
+  }
+  const isAlreadyQueued = markQueue.some((item) => item.id === id);
+  if (!isAlreadyQueued) {
+    markQueue.push({ id, element });
+  }
+}
+
+async function processMarkQueue(octokit: Octokit) {
+  if (isProcessingQueue) return;
+  isProcessingQueue = true;
+
+  async function next() {
+    const item = markQueue.shift();
+    if (!item) {
+      isProcessingQueue = false;
+      return;
+    }
+    const { id, element } = item;
+    try {
+      await octokit.request("PATCH /notifications/threads/{thread_id}", {
+        thread_id: Number(id),
+        headers: { "X-GitHub-Api-Version": "2022-11-28" },
+      });
+      viewedNotifications.add(id);
+      persistViewedNotifications();
+      dropPendingMark(id);
+      element.classList.add("marked-read");
+      element.setAttribute("aria-busy", "false");
+    } catch (error) {
+      console.error("Failed to mark notification as read on view:", error);
+      addInlineMarkError(element);
+      setTimeout(() => {
+        // Requeue for retry without duplicating entries
+        const isQueued = markQueue.some((entry) => entry.id === id);
+        if (!isQueued) {
+          markQueue.push({ id, element });
+        }
+        if (!isProcessingQueue) {
+          void processMarkQueue(octokit);
+        }
+      }, RETRY_DELAY_MS);
+    }
+    setTimeout(() => void next(), REQUEST_INTERVAL);
+  }
+
+  void next();
+}
 
 export async function renderNotifications(notifications: GitHubAggregated[], skipAnimation: boolean) {
   const providerToken = await getGitHubAccessToken();
+  const octokit = providerToken ? new Octokit({ auth: providerToken }) : null;
 
   if (notificationsContainer.classList.contains("ready")) {
     notificationsContainer.classList.remove("ready");
@@ -27,8 +117,15 @@ export async function renderNotifications(notifications: GitHubAggregated[], ski
   const commentsMap = await fetchLatestComments(notifications);
 
   for (const notification of notifications) {
+    // If GitHub still reports unread but we had already viewed, allow re-mark
+    const id = notification.notification.id.toString();
+    if (viewedNotifications.has(id)) {
+      viewedNotifications.delete(id);
+      persistViewedNotifications();
+    }
+
     if (!existingNotificationIds.has(notification.notification.id.toString())) {
-      const issueWrapper = everyNewNotification({ notification, notificationsContainer, commentsMap, providerToken });
+      const issueWrapper = everyNewNotification({ notification, notificationsContainer, commentsMap, octokit });
 
       if (issueWrapper) {
         if (skipAnimation) {
@@ -46,26 +143,15 @@ export async function renderNotifications(notifications: GitHubAggregated[], ski
     async (entries) => {
       for (const entry of entries) {
         if (!entry.isIntersecting) continue;
-        if (!providerToken) {
+        if (!octokit || !shouldAutoMarkNotifications) {
           observer.unobserve(entry.target);
           continue;
         }
         const issueElement = entry.target as HTMLElement;
         const id = issueElement.getAttribute("data-issue-id");
         if (id && !viewedNotifications.has(id)) {
-          viewedNotifications.add(id);
-          setLocalStore("viewed-notifications", Array.from(viewedNotifications));
-          const octokit = new Octokit({ auth: providerToken });
-          try {
-            await octokit.request("PATCH /notifications/threads/{thread_id}", {
-              thread_id: Number(id),
-              headers: { "X-GitHub-Api-Version": "2022-11-28" },
-            });
-            // Remove the notification from UI
-            issueElement.remove();
-          } catch (error) {
-            console.error("Failed to mark notification as read on view:", error);
-          }
+          enqueueMarkRequest(id, issueElement);
+          void processMarkQueue(octokit);
         }
         observer.unobserve(entry.target);
       }
@@ -79,6 +165,22 @@ export async function renderNotifications(notifications: GitHubAggregated[], ski
     el.classList.add("observed");
     observer.observe(el);
   });
+
+  // Resume any pending marks from previous sessions
+  if (octokit && pendingMarkIds.size > 0) {
+    pendingMarkIds.forEach((pendingId) => {
+      const element = notificationsContainer.querySelector(`.issue-element-inner[data-issue-id="${pendingId}"]`) as HTMLElement | null;
+      if (element) {
+        enqueueMarkRequest(pendingId, element);
+      } else {
+        // Drop orphaned pending IDs that no longer exist in DOM
+        dropPendingMark(pendingId);
+      }
+    });
+    if (markQueue.length > 0 && shouldAutoMarkNotifications) {
+      void processMarkQueue(octokit);
+    }
+  }
 
   notificationsContainer.classList.add("ready");
 
@@ -165,12 +267,12 @@ function everyNewNotification({
   notification,
   notificationsContainer,
   commentsMap,
-  providerToken,
+  octokit,
 }: {
   notification: GitHubAggregated;
   notificationsContainer: HTMLDivElement;
   commentsMap: Map<string, { userType: string; url: string; avatarUrl: string; commentBody: string }>;
-  providerToken: string | null;
+  octokit: Octokit | null;
 }) {
   const issueWrapper = notificationTemplate.cloneNode(true) as HTMLDivElement;
   const issueElement = issueWrapper.querySelector(".issue-element-inner") as HTMLDivElement;
@@ -194,19 +296,15 @@ function everyNewNotification({
     console.log("skipping ", notification.notification.subject.title, " because of bot notification");
     return;
   }
-  if (commentData.commentBody === "") {
-    console.log("skipping ", notification.notification.subject.title, " because of empty comment");
-    return;
-  }
 
-  setUpIssueElement(providerToken, issueElement, notification, organizationName, repositoryName, labels, commentData);
+  setUpIssueElement(octokit, issueElement, notification, organizationName, repositoryName, labels, commentData);
   issueWrapper.appendChild(issueElement);
   notificationsContainer.appendChild(issueWrapper);
   return issueWrapper;
 }
 
 function setUpIssueElement(
-  providerToken: string | null,
+  octokit: Octokit | null,
   issueElement: HTMLDivElement,
   notification: GitHubAggregated,
   organizationName: string,
@@ -219,7 +317,6 @@ function setUpIssueElement(
     issueElement.style.display = "none";
   }
 
-  const octokit = new Octokit({ auth: providerToken });
   const image = `<img class="orgAvatar"/>`;
 
   const issueNumber =
@@ -272,18 +369,27 @@ function setUpIssueElement(
   }
 
   issueElement.addEventListener("click", async () => {
-    window.open(commentData.url, "_blank");
+    // Prefer HTML URLs; fall back to API URL only if nothing else exists
+    const htmlUrl = commentData.url.startsWith("http")
+      ? commentData.url.replace("api.github.com/repos/", "github.com/").replace("/pulls/", "/pull/").replace("/issues/", "/issues/")
+      : commentData.url;
+    window.open(htmlUrl, "_blank");
+    if (!octokit) return;
     try {
-      // Only mark as read when clicked, don't delete
-      await octokit.request("PATCH /notifications/threads/{thread_id}", {
-        thread_id: Number(notification.notification.id),
-        headers: {
-          "X-GitHub-Api-Version": "2022-11-28",
-        },
-      });
-      // Mark as viewed locally
-      viewedNotifications.add(notification.notification.id.toString());
-      setLocalStore("viewed-notifications", Array.from(viewedNotifications));
+      const threadId = notification.notification.id.toString();
+      if (shouldAutoMarkNotifications) {
+        await octokit.request("PATCH /notifications/threads/{thread_id}", {
+          thread_id: Number(threadId),
+          headers: {
+            "X-GitHub-Api-Version": "2022-11-28",
+          },
+        });
+        viewedNotifications.add(threadId);
+        persistViewedNotifications();
+        dropPendingMark(threadId);
+        issueElement.classList.add("marked-read");
+        issueElement.setAttribute("aria-busy", "false");
+      }
     } catch (error) {
       console.error("Failed to mark notification as read:", error);
     }
@@ -298,20 +404,24 @@ async function fetchLatestComments(notifications: GitHubAggregated[]) {
     notifications.map(async (notification) => {
       const { subject } = notification.notification;
       let userType = "";
-      let url = "";
+      let url = notification.issue?.html_url || notification.pullRequest?.html_url || subject.url || "#";
       let avatarUrl = "";
-      let commentBody = "";
+      let commentBody = subject.title || "New activity";
 
       if (subject.latest_comment_url) {
         try {
           const response = await fetch(subject.latest_comment_url, {
             headers: { Authorization: `Bearer ${providerToken}` },
           });
-          const data: { user: { type: string; avatar_url: string }; html_url: string; body: string } = await response.json();
-          userType = data.user.type;
-          url = data.html_url;
-          avatarUrl = data.user.avatar_url;
-          commentBody = data.body;
+          if (!response.ok) {
+            console.warn("Latest comment fetch failed", subject.latest_comment_url, response.status);
+          } else {
+            const data: { user?: { type?: string; avatar_url?: string }; html_url?: string; body?: string } = await response.json();
+            userType = data.user?.type || "";
+            url = data.html_url || url;
+            avatarUrl = data.user?.avatar_url || avatarUrl;
+            commentBody = data.body || commentBody;
+          }
 
           // Check if commentBody contains HTML
           const parser = new DOMParser();
@@ -324,10 +434,6 @@ async function fetchLatestComments(notifications: GitHubAggregated[]) {
         }
       }
 
-      if (!url) {
-        url = notification.issue?.html_url || notification.pullRequest?.html_url || "#";
-      }
-
       commentsMap.set(notification.notification.id.toString(), { userType, url, avatarUrl, commentBody });
     })
   );
@@ -338,15 +444,15 @@ async function fetchLatestComments(notifications: GitHubAggregated[]) {
 function parseAndGenerateLabels(notification: GitHubAggregated) {
   const labels: string[] = [];
 
-  if (notification.issue.labels) {
-    notification.issue.labels.forEach((label: GitHubLabel) => {
-      if (typeof label === "string") return;
-      if (!label.name) return;
-
-      const match = label.name.match(/^(Priority): /);
+  const labelSource = notification.issue?.labels || notification.pullRequest?.labels;
+  if (labelSource) {
+    labelSource.forEach((label: GitHubLabel | string) => {
+      const name = typeof label === "string" ? label : label?.name;
+      if (!name) return;
+      const match = name.match(/priority\s*:\s*(.+)/i);
       if (match) {
-        const name = label.name.replace(match[0], "");
-        labels.push(`<label class="priority">${name}</label>`);
+        const value = match[1].trim();
+        labels.push(`<label class="priority">${value}</label>`);
       }
     });
   }
