@@ -9,10 +9,6 @@ jobs:
   deploy:
     uses: ubiquity/deno-deploy-workflow/.github/workflows/deno-deploy-reusable.yml@main
     secrets: inherit
-    env:
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-      STATIC_DIR: static/dist
     with:
       project: notifications-ubq-fi
       preview_project: notifications-ubq-fi-preview
@@ -21,17 +17,18 @@ jobs:
         bun install
       build_command: |
         bun run build
-      env_var_keys: |
-        SUPABASE_URL
-        SUPABASE_ANON_KEY
-        STATIC_DIR
+      build_env: |
+        SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+        SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+      runtime_env: |
+        SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+        SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
       bun_version: "1.1.x"
       deno_version: v2.x
       deployctl_version: "1.12.0"
       prod_branch: development
       include: |
         static/**
-        build/**
       exclude: |
         node_modules
         tests
