@@ -39,8 +39,8 @@ const hostname = window.location.hostname.replace(/\.$/, "").toLowerCase();
 export const isProdDomain = hostname === "ubq.fi" || hostname.endsWith(".ubq.fi");
 export const isTestMode = !isProdDomain;
 
-// Toggle auto mark-on-view (default on in prod, off in test)
-export let shouldAutoMarkNotifications = isProdDomain;
+// Toggle auto mark-on-view (explicitly off by default to avoid accidental reads)
+export let shouldAutoMarkNotifications = false;
 export function flipAutoMarkNotifications() {
   shouldAutoMarkNotifications = !shouldAutoMarkNotifications;
 }
