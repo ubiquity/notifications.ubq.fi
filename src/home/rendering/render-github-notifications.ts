@@ -72,6 +72,7 @@ function dropPendingMark(id: string) {
 }
 
 function enqueueMarkRequest(id: string, element: HTMLElement) {
+  if (!shouldAutoMarkNotifications) return;
   if (viewedNotifications.has(id)) return;
   if (!pendingMarkIds.has(id)) {
     pendingMarkIds.add(id);
@@ -84,6 +85,13 @@ function enqueueMarkRequest(id: string, element: HTMLElement) {
 }
 
 async function processMarkQueue(octokit: Octokit) {
+  if (!shouldAutoMarkNotifications) {
+    isProcessingQueue = false;
+    markQueue.length = 0;
+    pendingMarkIds.clear();
+    persistPendingMarks();
+    return;
+  }
   if (isProcessingQueue) return;
   isProcessingQueue = true;
 
@@ -128,6 +136,7 @@ async function processMarkQueue(octokit: Octokit) {
 export async function renderNotifications(notifications: GitHubAggregated[], skipAnimation: boolean) {
   const providerToken = await getGitHubAccessToken();
   const octokit = providerToken ? new Octokit({ auth: providerToken }) : null;
+  const shouldAutoMark = Boolean(octokit && shouldAutoMarkNotifications);
 
   if (notificationsContainer.classList.contains("ready")) {
     clearContainerPreserveIndicator();
@@ -164,48 +173,55 @@ export async function renderNotifications(notifications: GitHubAggregated[], ski
     }
   }
 
-  // Set up auto-mark on view
-  const observer = new IntersectionObserver(
-    async (entries) => {
-      for (const entry of entries) {
-        if (!entry.isIntersecting) continue;
-        if (!octokit || !shouldAutoMarkNotifications) {
+  if (shouldAutoMark) {
+    // Set up auto-mark on view
+    const observer = new IntersectionObserver(
+      async (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          if (!octokit || !shouldAutoMarkNotifications) {
+            observer.unobserve(entry.target);
+            continue;
+          }
+          const issueElement = entry.target as HTMLElement;
+          const id = issueElement.getAttribute("data-issue-id");
+          if (id && !viewedNotifications.has(id)) {
+            enqueueMarkRequest(id, issueElement);
+            void processMarkQueue(octokit);
+          }
           observer.unobserve(entry.target);
-          continue;
         }
-        const issueElement = entry.target as HTMLElement;
-        const id = issueElement.getAttribute("data-issue-id");
-        if (id && !viewedNotifications.has(id)) {
-          enqueueMarkRequest(id, issueElement);
-          void processMarkQueue(octokit);
-        }
-        observer.unobserve(entry.target);
-      }
-    },
-    { threshold: 0.5 }
-  );
+      },
+      { threshold: 0.5 }
+    );
 
-  // Observe new notifications
-  const newNotifications = notificationsContainer.querySelectorAll(".issue-element-inner:not(.observed)");
-  newNotifications.forEach((el) => {
-    el.classList.add("observed");
-    observer.observe(el);
-  });
-
-  // Resume any pending marks from previous sessions
-  if (octokit && pendingMarkIds.size > 0) {
-    pendingMarkIds.forEach((pendingId) => {
-      const element = notificationsContainer.querySelector(`.issue-element-inner[data-issue-id="${pendingId}"]`) as HTMLElement | null;
-      if (element) {
-        enqueueMarkRequest(pendingId, element);
-      } else {
-        // Drop orphaned pending IDs that no longer exist in DOM
-        dropPendingMark(pendingId);
-      }
+    // Observe new notifications
+    const newNotifications = notificationsContainer.querySelectorAll(".issue-element-inner:not(.observed)");
+    newNotifications.forEach((el) => {
+      el.classList.add("observed");
+      observer.observe(el);
     });
-    if (markQueue.length > 0 && shouldAutoMarkNotifications) {
-      void processMarkQueue(octokit);
+
+    // Resume any pending marks from previous sessions
+    if (pendingMarkIds.size > 0) {
+      pendingMarkIds.forEach((pendingId) => {
+        const element = notificationsContainer.querySelector(`.issue-element-inner[data-issue-id="${pendingId}"]`) as HTMLElement | null;
+        if (element) {
+          enqueueMarkRequest(pendingId, element);
+        } else {
+          // Drop orphaned pending IDs that no longer exist in DOM
+          dropPendingMark(pendingId);
+        }
+      });
+      if (markQueue.length > 0 && shouldAutoMarkNotifications) {
+        void processMarkQueue(octokit);
+      }
     }
+  } else {
+    // When auto-mark is off, clear any leftover pending state so nothing fires in the background
+    markQueue.length = 0;
+    pendingMarkIds.clear();
+    persistPendingMarks();
   }
 
   notificationsContainer.classList.add("ready");
