@@ -7,7 +7,7 @@ on:
 
 jobs:
   deploy:
-    uses: ubiquity/deno-deploy-workflow/.github/workflows/deno-deploy-reusable.yml@main
+    uses: ./.github/workflows/deno-deploy-reusable.yml
     secrets: inherit
     with:
       project: notifications-ubq-fi
