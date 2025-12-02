@@ -21,7 +21,7 @@ jobs:
         SUPABASE_URL=${{ secrets.SUPABASE_URL }}
         SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
       bun_version: "1.2.x"
-      deno_version: 2.x
+      deno_version: "2.x"
       deployctl_version: "1.12.0"
       prod_branch: development
       include: |
