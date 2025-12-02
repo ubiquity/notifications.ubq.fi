@@ -33,6 +33,18 @@ window.addEventListener("unhandledrejection", (event: PromiseRejectionEvent) => 
 
 renderGitRevision();
 generateSortingToolbar();
+const hostname = window.location.hostname.replace(/\.$/, "").toLowerCase();
+
+// Determine if we are on production domain
+export const isProdDomain = hostname === "ubq.fi" || hostname.endsWith(".ubq.fi");
+export const isTestMode = !isProdDomain;
+
+// Toggle auto mark-on-view (default on in prod, off in test)
+export let shouldAutoMarkNotifications = isProdDomain;
+export function flipAutoMarkNotifications() {
+  shouldAutoMarkNotifications = !shouldAutoMarkNotifications;
+}
+
 renderServiceMessage();
 renderTestModeToast();
 
@@ -47,16 +59,6 @@ if (!notificationsContainer) {
 export let shouldShowBotNotifications = false;
 export function flipShowBotNotifications() {
   shouldShowBotNotifications = !shouldShowBotNotifications;
-}
-
-// Determine if we are on production domain
-export const isProdDomain = window.location.hostname.endsWith("ubq.fi");
-export const isTestMode = !isProdDomain;
-
-// Toggle auto mark-on-view (default on in prod, off in test)
-export let shouldAutoMarkNotifications = isProdDomain;
-export function flipAutoMarkNotifications() {
-  shouldAutoMarkNotifications = !shouldAutoMarkNotifications;
 }
 
 function renderTestModeToast() {
