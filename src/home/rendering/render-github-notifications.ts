@@ -1,23 +1,11 @@
-import { Octokit } from "@octokit/rest";
 import { organizationImageCache } from "../fetch-github/fetch-data";
 import { getGitHubAccessToken } from "../getters/get-github-access-token";
 import { resolveViewerLogin } from "../getters/get-viewer-login";
-import { getLocalStore, setLocalStore } from "../getters/get-local-store";
 import { GitHubAggregated, GitHubLabel } from "../github-types";
-import { notificationsContainer, shouldShowBotNotifications, shouldAutoMarkNotifications } from "../home";
+import { notificationsContainer, shouldShowBotNotifications } from "../home";
 import { getTimeAgo } from "./utils";
 
 const DEFAULT_LATEST_COMMENT = "New activity";
-
-// Track viewed notifications to avoid re-marking
-const viewedNotifications = new Set<string>(getLocalStore<string[]>("viewed-notifications") ?? []);
-const pendingMarkIds = new Set<string>(getLocalStore<string[]>("pending-mark-ids") ?? []);
-
-type MarkQueueItem = { id: string; element: HTMLElement };
-const markQueue: MarkQueueItem[] = [];
-const REQUEST_INTERVAL = 200; // ~5 requests/sec
-const RETRY_DELAY_MS = 5000;
-let isProcessingQueue = false;
 
 function clearContainerPreserveIndicator() {
   const indicator = notificationsContainer.querySelector(".pull-refresh-indicator");
@@ -33,111 +21,7 @@ function hasRenderedNotifications() {
   return notificationsContainer.querySelector(".issue-element-inner") !== null;
 }
 
-function persistViewedNotifications() {
-  setLocalStore("viewed-notifications", Array.from(viewedNotifications));
-}
-
-function persistPendingMarks() {
-  setLocalStore("pending-mark-ids", Array.from(pendingMarkIds));
-}
-
-function removeNotificationElement(element: HTMLElement) {
-  const wrapper = element.parentElement;
-  if (wrapper) {
-    wrapper.remove();
-  } else {
-    element.remove();
-  }
-}
-
-function addInlineMarkError(element: HTMLElement) {
-  const labels = element.querySelector(".labels");
-  if (!labels) return;
-  const hasExisting = labels.querySelector(".mark-error");
-  if (hasExisting) return;
-  const label = document.createElement("label");
-  label.className = "mark-error";
-  label.textContent = "Retrying mark as read…";
-  labels.appendChild(label);
-}
-
-function dropPendingMark(id: string) {
-  pendingMarkIds.delete(id);
-  for (let i = markQueue.length - 1; i >= 0; i -= 1) {
-    if (markQueue[i].id === id) {
-      markQueue.splice(i, 1);
-    }
-  }
-  persistPendingMarks();
-}
-
-function enqueueMarkRequest(id: string, element: HTMLElement) {
-  if (!shouldAutoMarkNotifications) return;
-  if (viewedNotifications.has(id)) return;
-  if (!pendingMarkIds.has(id)) {
-    pendingMarkIds.add(id);
-    persistPendingMarks();
-  }
-  const isAlreadyQueued = markQueue.some((item) => item.id === id);
-  if (!isAlreadyQueued) {
-    markQueue.push({ id, element });
-  }
-}
-
-async function processMarkQueue(octokit: Octokit) {
-  if (!shouldAutoMarkNotifications) {
-    isProcessingQueue = false;
-    markQueue.length = 0;
-    pendingMarkIds.clear();
-    persistPendingMarks();
-    return;
-  }
-  if (isProcessingQueue) return;
-  isProcessingQueue = true;
-
-  async function next() {
-    const item = markQueue.shift();
-    if (!item) {
-      isProcessingQueue = false;
-      return;
-    }
-    const { id, element } = item;
-    try {
-      await octokit.request("PATCH /notifications/threads/{thread_id}", {
-        thread_id: Number(id),
-        headers: { "X-GitHub-Api-Version": "2022-11-28" },
-      });
-      viewedNotifications.add(id);
-      persistViewedNotifications();
-      dropPendingMark(id);
-      element.classList.add("marked-read");
-      element.setAttribute("aria-busy", "false");
-      removeNotificationElement(element);
-    } catch (error) {
-      console.error("Failed to mark notification as read on view:", error);
-      addInlineMarkError(element);
-      setTimeout(() => {
-        // Requeue for retry without duplicating entries
-        const isQueued = markQueue.some((entry) => entry.id === id);
-        if (!isQueued) {
-          markQueue.push({ id, element });
-        }
-        if (!isProcessingQueue) {
-          void processMarkQueue(octokit);
-        }
-      }, RETRY_DELAY_MS);
-    }
-    setTimeout(() => void next(), REQUEST_INTERVAL);
-  }
-
-  void next();
-}
-
 export async function renderNotifications(notifications: GitHubAggregated[], skipAnimation: boolean) {
-  const providerToken = await getGitHubAccessToken();
-  const octokit = providerToken ? new Octokit({ auth: providerToken }) : null;
-  const shouldAutoMark = Boolean(octokit && shouldAutoMarkNotifications);
-
   if (notificationsContainer.classList.contains("ready")) {
     clearContainerPreserveIndicator();
   }
@@ -152,15 +36,8 @@ export async function renderNotifications(notifications: GitHubAggregated[], ski
   const commentsMap = await fetchLatestComments(notifications);
 
   for (const notification of notifications) {
-    // If GitHub still reports unread but we had already viewed, allow re-mark
-    const id = notification.notification.id.toString();
-    if (viewedNotifications.has(id)) {
-      viewedNotifications.delete(id);
-      persistViewedNotifications();
-    }
-
     if (!existingNotificationIds.has(notification.notification.id.toString())) {
-      const issueWrapper = everyNewNotification({ notification, notificationsContainer, commentsMap, octokit });
+      const issueWrapper = everyNewNotification({ notification, notificationsContainer, commentsMap });
 
       if (issueWrapper) {
         if (skipAnimation) {
@@ -171,57 +48,6 @@ export async function renderNotifications(notifications: GitHubAggregated[], ski
         }
       }
     }
-  }
-
-  if (shouldAutoMark) {
-    // Set up auto-mark on view
-    const observer = new IntersectionObserver(
-      async (entries) => {
-        for (const entry of entries) {
-          if (!entry.isIntersecting) continue;
-          if (!octokit || !shouldAutoMarkNotifications) {
-            observer.unobserve(entry.target);
-            continue;
-          }
-          const issueElement = entry.target as HTMLElement;
-          const id = issueElement.getAttribute("data-issue-id");
-          if (id && !viewedNotifications.has(id)) {
-            enqueueMarkRequest(id, issueElement);
-            void processMarkQueue(octokit);
-          }
-          observer.unobserve(entry.target);
-        }
-      },
-      { threshold: 0.5 }
-    );
-
-    // Observe new notifications
-    const newNotifications = notificationsContainer.querySelectorAll(".issue-element-inner:not(.observed)");
-    newNotifications.forEach((el) => {
-      el.classList.add("observed");
-      observer.observe(el);
-    });
-
-    // Resume any pending marks from previous sessions
-    if (pendingMarkIds.size > 0) {
-      pendingMarkIds.forEach((pendingId) => {
-        const element = notificationsContainer.querySelector(`.issue-element-inner[data-issue-id="${pendingId}"]`) as HTMLElement | null;
-        if (element) {
-          enqueueMarkRequest(pendingId, element);
-        } else {
-          // Drop orphaned pending IDs that no longer exist in DOM
-          dropPendingMark(pendingId);
-        }
-      });
-      if (markQueue.length > 0 && shouldAutoMarkNotifications) {
-        void processMarkQueue(octokit);
-      }
-    }
-  } else {
-    // When auto-mark is off, clear any leftover pending state so nothing fires in the background
-    markQueue.length = 0;
-    pendingMarkIds.clear();
-    persistPendingMarks();
   }
 
   notificationsContainer.classList.add("ready");
@@ -308,12 +134,10 @@ function everyNewNotification({
   notification,
   notificationsContainer,
   commentsMap,
-  octokit,
 }: {
   notification: GitHubAggregated;
   notificationsContainer: HTMLDivElement;
   commentsMap: Map<string, { userType: string; url: string; avatarUrl: string; commentBody: string; isSlashCommand: boolean }>;
-  octokit: Octokit | null;
 }) {
   const issueWrapper = notificationTemplate.cloneNode(true) as HTMLDivElement;
   const issueElement = issueWrapper.querySelector(".issue-element-inner") as HTMLDivElement;
@@ -343,14 +167,13 @@ function everyNewNotification({
     return;
   }
 
-  setUpIssueElement(octokit, issueElement, notification, organizationName, repositoryName, labels, commentData);
+  setUpIssueElement(issueElement, notification, organizationName, repositoryName, labels, commentData);
   issueWrapper.appendChild(issueElement);
   notificationsContainer.appendChild(issueWrapper);
   return issueWrapper;
 }
 
 function setUpIssueElement(
-  octokit: Octokit | null,
   issueElement: HTMLDivElement,
   notification: GitHubAggregated,
   organizationName: string,
@@ -420,26 +243,6 @@ function setUpIssueElement(
       ? commentData.url.replace("api.github.com/repos/", "github.com/").replace("/pulls/", "/pull/").replace("/issues/", "/issues/")
       : commentData.url;
     window.open(htmlUrl, "_blank");
-    if (!octokit) return;
-    try {
-      const threadId = notification.notification.id.toString();
-      if (shouldAutoMarkNotifications) {
-        await octokit.request("PATCH /notifications/threads/{thread_id}", {
-          thread_id: Number(threadId),
-          headers: {
-            "X-GitHub-Api-Version": "2022-11-28",
-          },
-        });
-        viewedNotifications.add(threadId);
-        persistViewedNotifications();
-        dropPendingMark(threadId);
-        issueElement.classList.add("marked-read");
-        issueElement.setAttribute("aria-busy", "false");
-        removeNotificationElement(issueElement);
-      }
-    } catch (error) {
-      console.error("Failed to mark notification as read:", error);
-    }
   });
 }
 
