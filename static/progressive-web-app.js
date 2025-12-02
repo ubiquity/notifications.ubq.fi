@@ -1,4 +1,4 @@
-const staticCacheName = "pwacache-v6"; // v6: TTL for API cache + SW-driven invalidation
+const staticCacheName = "pwacache-v7"; // v7: cache-bust after auto-mark disable
 const apiCacheName = "pwacache-api-v1";
 const API_TTL_MS = 10 * 60 * 1000; // 10 minutes
 const urlsToCache = [
