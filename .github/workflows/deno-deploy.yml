@@ -1,0 +1,32 @@
+name: Deploy (Deno Deploy)
+
+on:
+  push:
+    branches: [development]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    uses: ubiquity/deno-deploy-workflow/.github/workflows/deno-deploy-reusable.yml@main
+    secrets: inherit
+    with:
+      project: notifications-ubq-fi
+      preview_project: notifications-ubq-fi-preview
+      entrypoint: serve.ts
+      install_command: |
+        bun install
+      build_command: |
+        bun run build
+      build_env: |
+        SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+        SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+      bun_version: "1.2.x"
+      deno_version: 2.x
+      deployctl_version: "1.12.0"
+      prod_branch: development
+      include: |
+        static/**
+      exclude: |
+        node_modules
+        tests
+        cypress
