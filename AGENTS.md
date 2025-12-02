@@ -5,3 +5,9 @@
 - Mark-as-read is disabled off the `ubq.fi` domain by default; the CLI never marks anything read. UI auto-mark can be toggled via `flipAutoMarkNotifications()` in the browser console.
 - DOM-dependent modules are guarded for non-browser contexts, so running via `npm run notifications:cli` should not require a DOM or Supabase env vars (token is mandatory).
 - Priority labels: matched case-insensitively on `priority: <value>` from linked issues. PRs resolve their issue via body keywords (Resolves/Closes/Fixes) or same-number fallback; CLI output shows the priority chip value.
+
+## Deno Deploy CI notes (2025-12-02)
+- Inline the Deno deploy workflow in this repo to avoid reusable-workflow parse/access issues; it runs on `development`.
+- Install Bun via the official script (not `oven-sh/setup-bun`) to sidestep cache/HTTP 400 failures on Actions.
+- Include `static/**`, `serve.ts`, and `deno.json` in deployctl uploads; otherwise the entrypoint is missing on deploy.
+- Build uses Supabase secrets at build time; runtime env not needed for the static server.
