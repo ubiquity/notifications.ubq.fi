@@ -14,6 +14,7 @@ jobs:
     env:
       PROJECT: notifications-ubq-fi
       PREVIEW_PROJECT: notifications-ubq-fi-preview
+      PROD_BRANCH: ${{ github.event.repository.default_branch }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -49,16 +50,24 @@ jobs:
           set -euo pipefail
           target="$PREVIEW_PROJECT"
           prod_flag=""
-          if [ "${GITHUB_REF_NAME}" = "development" ]; then
+          if [ "${GITHUB_REF_NAME}" = "$PROD_BRANCH" ]; then
             target="$PROJECT"
             prod_flag="--prod"
           fi
+
+          # Derive excludes from .gitignore to avoid shipping dev/test artifacts.
+          mapfile -t ignored_paths < <(git ls-files -o --ignored --exclude-standard --directory --no-empty-directory)
+          excludes=()
+          for path in "${ignored_paths[@]}"; do
+            excludes+=("--exclude=${path}")
+          done
+
           deployctl deploy \
             --project="$target" \
             $prod_flag \
             --entrypoint=serve.ts \
             --root="." \
             --token="$DENO_DEPLOY_TOKEN" \
-            --include="static/**" \
-            --include="serve.ts" \
-            --include="deno.json"
+            --include="." \
+            --include="deno.json" \
+            "${excludes[@]}"
