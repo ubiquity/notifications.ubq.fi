@@ -232,16 +232,17 @@ jobs:
         id: target
         env:
           REF_NAME: ${{ github.ref_name }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
           set -euo pipefail
-          repo_name="${GITHUB_REPOSITORY#*/}"
-          project=$(echo "$repo_name" | sed 's/\./-/g')
+          project="$PROJECT"
+          preview="$PREVIEW_PROJECT"
+          if [ -z "$preview" ]; then
+            preview="${project}-preview"
+          fi
           if [ ${#project} -gt 26 ]; then
             echo "::error::Base project name '${project}' exceeds 26 characters (Deno Deploy's max project name character limit)"
             exit 1
           fi
-          preview="preview-${project}"
           if [ ${#preview} -gt 26 ]; then
             echo "::error::Preview project name '${preview}' exceeds 26 characters (Deno Deploy's max project name character limit)"
             exit 1
