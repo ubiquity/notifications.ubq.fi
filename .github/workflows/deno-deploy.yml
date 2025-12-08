@@ -7,6 +7,9 @@ on:
 jobs:
   deploy:
     uses: ubiquity/deno-deploy-workflow/.github/workflows/deno-deploy-reusable.yml@main
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
     with:
       project: ${{ replace(github.event.repository.name, '.', '-') }}
       preview_project: ${{ format('{0}-pre', replace(github.event.repository.name, '.', '-')) }}
