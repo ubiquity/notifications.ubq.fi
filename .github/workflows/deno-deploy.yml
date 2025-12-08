@@ -22,7 +22,7 @@ jobs:
 
   deploy:
     needs: prepare
-    uses: ubiquity/deno-deploy-workflow/.github/workflows/deno-deploy-reusable.yml@main
+    uses: ./.github/workflows/deno-deploy-reusable.yml
     with:
       project: ${{ needs.prepare.outputs.project }}
       preview_project: ${{ needs.prepare.outputs.preview_project }}
