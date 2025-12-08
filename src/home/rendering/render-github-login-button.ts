@@ -36,6 +36,10 @@ export async function checkSupabaseSession() {
 }
 
 async function gitHubLoginButtonHandler(scopes = "public_repo read:org notifications") {
+  if (!supabase) {
+    renderErrorInModal(new Error("Supabase client unavailable"), "Error logging in");
+    return;
+  }
   const redirectTo = window.location.href;
   const { error } = await supabase.auth.signInWithOAuth({
     provider: "github",

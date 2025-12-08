@@ -29,7 +29,6 @@ jest.mock("@octokit/request-error", () => {
 });
 
 import * as indexedDb from "../src/home/getters/get-indexed-db";
-import * as tokenModule from "../src/home/getters/get-github-access-token";
 import { fetchIssues, fetchPullRequests, fetchAllNotifications, processNotifications, getIssueNotifications } from "../src/home/fetch-github/fetch-data";
 import { GitHubIssue, GitHubLabel, GitHubNotification, GitHubNotifications, GitHubPullRequest } from "../src/home/github-types";
 
@@ -42,7 +41,6 @@ describe("fetch-data helpers", () => {
   beforeEach(() => {
     saveNotificationsToCacheSpy = jest.spyOn(indexedDb, "saveNotificationsToCache").mockResolvedValue(undefined);
     saveAggregatedNotificationsToCacheSpy = jest.spyOn(indexedDb, "saveAggregatedNotificationsToCache").mockResolvedValue(undefined);
-    getGitHubAccessTokenSpy = jest.spyOn(tokenModule, "getGitHubAccessToken").mockReturnValue("token");
   });
 
   afterEach(() => {

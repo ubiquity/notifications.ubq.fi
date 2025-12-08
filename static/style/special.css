@@ -171,3 +171,53 @@
     border-color: transparent;
   }
 }
+
+#mark-as-read-toggle {
+  position: fixed;
+  bottom: 12px;
+  left: 12px;
+  padding: 10px 12px;
+  background: rgba(12, 12, 12, 0.9);
+  color: #f6f7fb;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  font-size: 13px;
+  z-index: 9999;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  cursor: pointer;
+  max-width: 360px;
+  width: min(360px, calc(100vw - 24px));
+  box-sizing: border-box;
+  line-height: 1.45;
+  word-break: break-word;
+  backdrop-filter: blur(2px);
+  white-space: normal;
+  height: auto;
+  overflow: visible;
+  text-overflow: clip;
+  text-align: left;
+}
+
+.mark-as-read-checkbox {
+  margin-top: 0;
+}
+
+.mark-as-read-text {
+  flex: 1 1 240px;
+  white-space: normal;
+}
+
+.mark-as-read-heading {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.mark-as-read-caption {
+  opacity: 0.8;
+  white-space: normal;
+  font-size: 12px;
+  margin-top: 2px;
+}

@@ -24,9 +24,7 @@ export async function fetchNotifications(options: { token?: string } = {}): Prom
         headers: {
           "X-GitHub-Api-Version": "2022-11-28",
         },
-        // Need full set of notifications for downstream filtering (repo + priority + backlink pass)
-        all: true,
-        // Restrict to direct participation to avoid unrelated noise
+        // Only unread (default) so marked-as-read items drop from the list after refresh
         participating: true,
       })
     ).data as GitHubNotifications;
@@ -171,47 +169,50 @@ export async function getPullRequestNotifications(
 ): Promise<GitHubAggregated[] | null> {
   if (!notifications) return null;
 
-  const aggregatedData: GitHubAggregated[] = [];
   const filteredNotifications = filterPullRequestNotifications(devpoolRepos, notifications);
+  if (filteredNotifications.length === 0) return [];
 
-  for (const notification of filteredNotifications) {
-    const pullRequestUrl = notification.subject.url;
-    let pullRequest = pullRequests.find((pr) => pr.url === pullRequestUrl) ?? null;
-    if (!pullRequest) {
-      try {
-        const octokit = new Octokit({ auth: token });
-        pullRequest = (
-          await octokit.request("GET /repos/{owner}/{repo}/pulls/{pull_number}", {
-            owner: notification.repository.owner.login,
-            repo: notification.repository.name,
-            pull_number: Number(notification.subject.url.split("/").pop()),
-            headers: { "X-GitHub-Api-Version": "2022-11-28" },
-          })
-        ).data as unknown as GitHubPullRequest;
-      } catch (error) {
-        console.log("skipping ", notification.subject.title, "cause PR not found in API", error);
-        continue;
+  const octokit = new Octokit({ auth: token });
+
+  const aggregatedData = await Promise.all(
+    filteredNotifications.map(async (notification) => {
+      const pullRequestUrl = notification.subject.url;
+      let pullRequest = pullRequests.find((pr) => pr.url === pullRequestUrl) ?? null;
+      if (!pullRequest) {
+        try {
+          pullRequest = (
+            await octokit.request("GET /repos/{owner}/{repo}/pulls/{pull_number}", {
+              owner: notification.repository.owner.login,
+              repo: notification.repository.name,
+              pull_number: Number(notification.subject.url.split("/").pop()),
+              headers: { "X-GitHub-Api-Version": "2022-11-28" },
+            })
+          ).data as unknown as GitHubPullRequest;
+        } catch (error) {
+          console.log("skipping ", notification.subject.title, "cause PR not found in API", error);
+          return null;
+        }
       }
-    }
 
-    const issue = await fetchIssueFromPullRequest(pullRequest, issues);
-    let resolvedIssue = issue;
-    if (!resolvedIssue) {
-      const baseRepoUrl = pullRequest.base?.repo?.url;
-      if (baseRepoUrl && pullRequest.number) {
-        const fallbackIssueUrl = `${baseRepoUrl}/issues/${pullRequest.number}`;
-        resolvedIssue = await fetchIssueByApi(fallbackIssueUrl, token);
+      const issue = await fetchIssueFromPullRequest(pullRequest, issues);
+      let resolvedIssue = issue;
+      if (!resolvedIssue) {
+        const baseRepoUrl = pullRequest.base?.repo?.url;
+        if (baseRepoUrl && pullRequest.number) {
+          const fallbackIssueUrl = `${baseRepoUrl}/issues/${pullRequest.number}`;
+          resolvedIssue = await fetchIssueByApi(fallbackIssueUrl, token);
+        }
       }
-    }
-    if (!resolvedIssue) {
-      console.log("skipping ", notification.subject.title, "cause no associated issue");
-      continue; // Skip if no associated issue
-    }
+      if (!resolvedIssue) {
+        console.log("skipping ", notification.subject.title, "cause no associated issue");
+        return null; // Skip if no associated issue
+      }
 
-    aggregatedData.push({ notification, pullRequest, issue: resolvedIssue, backlinkCount: 0 });
-  }
+      return { notification, pullRequest, issue: resolvedIssue, backlinkCount: 0 } as GitHubAggregated;
+    })
+  );
 
-  return aggregatedData;
+  return aggregatedData.filter((item): item is GitHubAggregated => item !== null);
 }
 
 // Function to fetch issue notifications with related issue data
@@ -223,24 +224,23 @@ export async function getIssueNotifications(
 ): Promise<GitHubAggregated[] | null> {
   if (!notifications) return null;
 
-  const aggregatedData: GitHubAggregated[] = [];
   const filteredNotifications = filterIssueNotifications(devpoolRepos, notifications);
+  if (filteredNotifications.length === 0) return [];
 
-  for (const notification of filteredNotifications) {
-    const issueUrl = notification.subject.url;
-    let issue = issues.find((issue) => issue.url === issueUrl);
-    if (!issue) {
-      issue = await fetchIssueByApi(issueUrl, token);
-    }
-    if (!issue) {
-      console.log("skipping ", notification.subject.title, "cause issue not found in fetched list");
-      continue;
-    }
+  const aggregatedData = await Promise.all(
+    filteredNotifications.map(async (notification) => {
+      const issueUrl = notification.subject.url;
+      const issue = issues.find((item) => item.url === issueUrl) ?? (await fetchIssueByApi(issueUrl, token));
+      if (!issue) {
+        console.log("skipping ", notification.subject.title, "cause issue not found in fetched list");
+        return null;
+      }
 
-    aggregatedData.push({ notification, pullRequest: null, issue, backlinkCount: 0 });
-  }
+      return { notification, pullRequest: null, issue, backlinkCount: 0 } as GitHubAggregated;
+    })
+  );
 
-  return aggregatedData;
+  return aggregatedData.filter((item): item is GitHubAggregated => item !== null);
 }
 
 function extractOwnerRepo(source: string | null | undefined): { owner?: string; repo?: string } {

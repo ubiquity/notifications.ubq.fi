@@ -18,6 +18,7 @@ import {
 } from "./getters/get-indexed-db";
 
 import { setupAuth } from "./auth-config";
+import { initMarkAsReadToggle } from "./mark-as-read";
 
 // Set up authentication from environment variables
 setupAuth();
@@ -40,7 +41,7 @@ export const isProdDomain = hostname === "ubq.fi" || hostname.endsWith(".ubq.fi"
 export const isTestMode = !isProdDomain;
 
 renderServiceMessage();
-renderTestModeToast();
+initMarkAsReadToggle({ isProdDomain });
 
 grid(document.getElementById("grid") as HTMLElement, () => document.body.classList.add("grid-loaded")); // @DEV: display grid background
 export const notificationsContainer = document.getElementById("issues-container") as HTMLDivElement;
@@ -53,26 +54,6 @@ if (!notificationsContainer) {
 export let shouldShowBotNotifications = false;
 export function flipShowBotNotifications() {
   shouldShowBotNotifications = !shouldShowBotNotifications;
-}
-
-function renderTestModeToast() {
-  if (isProdDomain) return;
-  const existing = document.getElementById("test-mode-toast");
-  if (existing) return;
-  const toast = document.createElement("div");
-  toast.id = "test-mode-toast";
-  toast.textContent = "Test mode: mark-as-read disabled outside ubq.fi";
-  toast.style.position = "fixed";
-  toast.style.bottom = "12px";
-  toast.style.left = "12px";
-  toast.style.padding = "10px 12px";
-  toast.style.background = "rgba(20, 20, 20, 0.9)";
-  toast.style.color = "#fff";
-  toast.style.borderRadius = "6px";
-  toast.style.fontSize = "12px";
-  toast.style.zIndex = "9999";
-  toast.style.boxShadow = "0 2px 6px rgba(0,0,0,0.2)";
-  document.body.appendChild(toast);
 }
 
 // Store notifications
@@ -135,10 +116,11 @@ async function refreshNotifications() {
   await clearNotificationsCache(); // Clear IndexedDB cache
   await clearServiceWorkerApiCache(); // Invalidate SW API cache before refetch
   const newNotifications = await fetchAllNotifications();
-  if (newNotifications) {
-    await fetchAvatars(newNotifications);
+  notifications = newNotifications ?? null;
+  if (notifications) {
+    await fetchAvatars(notifications);
   }
-  await displayNotifications();
+  await displayNotifications({ preloadedNotifications: notifications });
 }
 
 void (async function home() {
@@ -148,7 +130,7 @@ void (async function home() {
   if (notifications) {
     await fetchAvatars(notifications);
   }
-  void displayNotifications();
+  void displayNotifications({ preloadedNotifications: notifications });
 
   // Initialize pull-to-refresh
   initPullToRefresh(refreshNotifications);

@@ -3,6 +3,7 @@ import { getGitHubAccessToken } from "../getters/get-github-access-token";
 import { resolveViewerLogin } from "../getters/get-viewer-login";
 import { GitHubAggregated, GitHubLabel } from "../github-types";
 import { notificationsContainer, shouldShowBotNotifications } from "../home";
+import { markNotificationAsRead } from "../mark-as-read";
 import { getTimeAgo } from "./utils";
 
 const DEFAULT_LATEST_COMMENT = "New activity";
@@ -243,6 +244,7 @@ function setUpIssueElement(
       ? commentData.url.replace("api.github.com/repos/", "github.com/").replace("/pulls/", "/pull/").replace("/issues/", "/issues/")
       : commentData.url;
     window.open(htmlUrl, "_blank");
+    void markNotificationAsRead(notification.notification);
   });
 }
 

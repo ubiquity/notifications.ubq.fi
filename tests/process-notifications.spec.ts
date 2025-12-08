@@ -24,6 +24,7 @@ import { GitHubIssue, GitHubNotifications, GitHubPullRequest } from "../src/home
 
 describe("processNotifications", () => {
   it("handles PR with missing base.repo without throwing", async () => {
+    const token = "test-token";
     const notifications = [
       {
         id: "1",
@@ -61,8 +62,8 @@ describe("processNotifications", () => {
       },
     ] as unknown as GitHubIssue[];
 
-    expect(async () => await processNotifications(notifications, pullRequests, issues)).not.toThrow();
-    const result = await processNotifications(notifications, pullRequests, issues);
+    expect(async () => await processNotifications(notifications, pullRequests, issues, token)).not.toThrow();
+    const result = await processNotifications(notifications, pullRequests, issues, token);
     expect(result).not.toBeNull();
     if (!result) return;
     expect(result).toHaveLength(1);
@@ -70,6 +71,7 @@ describe("processNotifications", () => {
   });
 
   it("filters out draft PRs", async () => {
+    const token = "test-token";
     const devpoolRepos = new Set(["owner/repo"]);
     const notifications: GitHubNotifications = [];
     const pullRequests = [
@@ -83,17 +85,18 @@ describe("processNotifications", () => {
       },
     ] as unknown as GitHubPullRequest[];
     const issues: GitHubIssue[] = [];
-    const result = await getPullRequestNotifications(devpoolRepos, notifications, pullRequests, issues);
+    const result = await getPullRequestNotifications(devpoolRepos, notifications, pullRequests, issues, token);
     expect(result).toHaveLength(0);
   });
 
   it("filters out closed issues", () => {
+    const token = "test-token";
     const devpoolRepos = new Set(["owner/repo"]);
     const notifications: GitHubNotifications = [];
     const issues = [
       { url: "https://api.github.com/repos/owner/repo/issues/456", state: "closed", repository_url: "https://api.github.com/repos/owner/repo" },
     ] as unknown as GitHubIssue[];
-    const result = getIssueNotifications(devpoolRepos, notifications, issues);
-    expect(result).toHaveLength(0);
+    const result = getIssueNotifications(devpoolRepos, notifications, issues, token);
+    return result.then((r) => expect(r).toHaveLength(0));
   });
 });
