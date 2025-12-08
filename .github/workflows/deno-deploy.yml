@@ -5,10 +5,27 @@ on:
   workflow_dispatch:
 
 jobs:
+  prepare:
+    runs-on: ubuntu-22.04
+    outputs:
+      project: ${{ steps.slug.outputs.project }}
+      preview_project: ${{ steps.slug.outputs.preview_project }}
+    steps:
+      - name: Compute project names
+        id: slug
+        run: |
+          set -euo pipefail
+          name="${GITHUB_REPOSITORY##*/}"
+          slug=$(printf '%s' "$name" | tr '.' '-')
+          echo "project=$slug" >> "$GITHUB_OUTPUT"
+          echo "preview_project=${slug}-preview" >> "$GITHUB_OUTPUT"
+
   deploy:
+    needs: prepare
     uses: ubiquity/deno-deploy-workflow/.github/workflows/deno-deploy-reusable.yml@main
     with:
-      project: ${{ replace(github.event.repository.name, '.', '-') }}
+      project: ${{ needs.prepare.outputs.project }}
+      preview_project: ${{ needs.prepare.outputs.preview_project }}
       entrypoint: serve.ts
       bun_version: latest
       install_command: bun install
