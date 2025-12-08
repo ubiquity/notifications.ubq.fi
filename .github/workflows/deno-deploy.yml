@@ -23,9 +23,6 @@ jobs:
   deploy:
     needs: prepare
     uses: ./.github/workflows/deno-deploy-reusable.yml
-    env:
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
     with:
       project: ${{ needs.prepare.outputs.project }}
       preview_project: ${{ needs.prepare.outputs.preview_project }}
