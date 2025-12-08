@@ -11,8 +11,8 @@ jobs:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
     with:
-      project: ${{ replace(github.event.repository.name, '.', '-') }}
-      preview_project: ${{ format('{0}-pre', replace(github.event.repository.name, '.', '-')) }}
+      project: notifications-ubq-fi
+      preview_project: notifications-ubq-fi-pre
       entrypoint: serve.ts
       bun_version: latest
       install_command: bun install
