@@ -6,7 +6,7 @@ on:
 
 jobs:
   deploy:
-    uses: ubiquity/deno-deploy-workflow/.github/workflows/deno-deploy-reusable.yml@main
+    uses: ubiquity/deno-deploy-workflow/.github/workflows/deno-deploy-reusable.yml@4519d35
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
