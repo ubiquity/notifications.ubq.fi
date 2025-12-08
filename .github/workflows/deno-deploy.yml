@@ -6,7 +6,7 @@ on:
 
 jobs:
   deploy:
-    uses: ubiquity/deno-deploy-workflow/.github/workflows/deno-deploy-reusable.yml@d00f4cb
+    uses: ubiquity/deno-deploy-workflow/.github/workflows/deno-deploy-reusable.yml@d00f4cbc56a74b9c6234d3720529b8abff7217fc
     with:
       project: notifications-ubq-fi
       preview_project: notifications-ubq-fi-pre
