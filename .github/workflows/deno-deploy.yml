@@ -17,8 +17,12 @@ jobs:
           set -euo pipefail
           name="${GITHUB_REPOSITORY##*/}"
           slug=$(printf '%s' "$name" | tr '.' '-')
+          preview="${slug}-pre"
+          if [ ${#preview} -gt 26 ]; then
+            preview="${preview:0:26}"
+          fi
           echo "project=$slug" >> "$GITHUB_OUTPUT"
-          echo "preview_project=${slug}-preview" >> "$GITHUB_OUTPUT"
+          echo "preview_project=$preview" >> "$GITHUB_OUTPUT"
 
   deploy:
     needs: prepare
