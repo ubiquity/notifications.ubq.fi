@@ -23,6 +23,9 @@ jobs:
   deploy:
     needs: prepare
     uses: ./.github/workflows/deno-deploy-reusable.yml
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
     with:
       project: ${{ needs.prepare.outputs.project }}
       preview_project: ${{ needs.prepare.outputs.preview_project }}
@@ -31,8 +34,8 @@ jobs:
       install_command: bun install
       build_command: bun run build
       build_env: |
-        SUPABASE_URL=${{ secrets.SUPABASE_URL }}
-        SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+        SUPABASE_URL=${SUPABASE_URL}
+        SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
       include: |
         static/dist/**
     secrets: inherit
