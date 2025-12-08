@@ -2,17 +2,14 @@ name: Deno Deploy
 
 on:
   push:
-    branches: [development]
   workflow_dispatch:
 
 jobs:
   deploy:
     uses: ubiquity/deno-deploy-workflow/.github/workflows/deno-deploy-reusable.yml@main
     with:
-      project: notifications-ubq-fi
-      preview_project: notifications-ubq-fi-preview
+      project: ${{ replace(github.event.repository.name, '.', '-') }}
       entrypoint: serve.ts
-      prod_branch: development
       bun_version: latest
       install_command: bun install
       build_command: bun run build
@@ -21,7 +18,4 @@ jobs:
         SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
       include: |
         static/dist/**
-    secrets:
-      DENO_DEPLOY_TOKEN: ${{ secrets.DENO_DEPLOY_TOKEN }}
-      DENO_PROJECT_SECRETS: ${{ secrets.DENO_PROJECT_SECRETS }}
-      DENO_PREVIEW_PROJECT_SECRETS: ${{ secrets.DENO_PREVIEW_PROJECT_SECRETS }}
+    secrets: inherit
