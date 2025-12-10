@@ -17,4 +17,10 @@ jobs:
         static/**
         serve.ts
         deno.json
+      debug_fetch_paths: |
+        /
+        dist/src/home/home.js
+        progressive-web-app.js
+        style/style.css
+      debug_fetch_fail: true
     secrets: inherit
