@@ -1,4 +1,4 @@
-const staticCacheName = "pwacache-v7"; // v7: cache-bust after auto-mark disable
+const staticCacheName = "pwacache-v8"; // v8: cache-bust after Supabase env fix
 const apiCacheName = "pwacache-api-v1";
 const API_TTL_MS = 10 * 60 * 1000; // 10 minutes
 const urlsToCache = [
