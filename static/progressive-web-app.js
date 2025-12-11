@@ -1,4 +1,4 @@
-const staticCacheName = "pwacache-v8"; // v8: cache-bust after Supabase env fix
+const staticCacheName = "pwacache-v9"; // v9: cache-bust for PNG favicons
 const apiCacheName = "pwacache-api-v1";
 const API_TTL_MS = 10 * 60 * 1000; // 10 minutes
 const urlsToCache = [
@@ -10,7 +10,7 @@ const urlsToCache = [
   "/style/inverted-style.css",
   "/style/fonts/ubiquity-nova-standard.woff",
   "/style/special.css",
-  "/favicon.svg",
+  "/favicon.png",
 ];
 
 // Install event (caches all necessary files)
