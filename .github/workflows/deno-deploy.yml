@@ -17,6 +17,5 @@ jobs:
         static/**
         serve.ts
         deno.json
-      index_html_path: static/index.html
       debug_fetch_fail: true
     secrets: inherit
