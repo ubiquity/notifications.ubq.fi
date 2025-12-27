@@ -7,7 +7,7 @@ config();
 
 const typescriptEntries = ["src/home/home.ts"];
 const cssEntries = ["static/style/style.css"];
-const entries = [...typescriptEntries, ...cssEntries, "static/manifest.json", "static/favicon.png", "static/icon-192x192.png", "static/icon-512x512.png"];
+const entries = [...typescriptEntries, ...cssEntries, "static/manifest.json", "static/favicon-32.png", "static/favicon.png", "static/icon-192x192.png", "static/icon-512x512.png"];
 
 export const esBuildContext: esbuild.BuildOptions = {
   plugins: [invertColors, pwaManifest],

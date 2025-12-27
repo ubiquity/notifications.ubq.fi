@@ -1,4 +1,4 @@
-const staticCacheName = "pwacache-v9"; // v9: cache-bust for PNG favicons
+const staticCacheName = "pwacache-v12"; // v12: cache-bust for updated favicon assets
 const apiCacheName = "pwacache-api-v1";
 const API_TTL_MS = 10 * 60 * 1000; // 10 minutes
 const urlsToCache = [
@@ -10,6 +10,7 @@ const urlsToCache = [
   "/style/inverted-style.css",
   "/style/fonts/ubiquity-nova-standard.woff",
   "/style/special.css",
+  "/favicon-32.png",
   "/favicon.png",
 ];
 
