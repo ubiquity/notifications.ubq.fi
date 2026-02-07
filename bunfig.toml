@@ -1,0 +1,13 @@
+[test]
+# Ensure DOM APIs exist in tests
+preload = ["./tests/happydom-setup.ts", "./tests/setup-env.ts"]
+
+# Coverage output is used by CI (text + lcov)
+coverage = true
+coverageReporter = ["text", "lcov"]
+
+# Keep local test output human-readable while also producing a JUnit XML artifact for CI.
+
+[test.reporter]
+dots = true
+junit = "junit.xml"

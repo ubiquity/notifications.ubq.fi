@@ -39,12 +39,20 @@ esbuild
 
 function createEnvDefines(environmentVariables: string[], generatedAtBuild: Record<string, unknown>): Record<string, string> {
   const defines: Record<string, string> = {};
+  const placeholderEnv: Partial<Record<(typeof environmentVariables)[number], string>> = {
+    SUPABASE_URL: "https://example.supabase.co",
+    SUPABASE_ANON_KEY: "example",
+  };
   for (const name of environmentVariables) {
     const envVar = process.env[name];
     if (envVar !== undefined) {
       defines[name] = JSON.stringify(envVar);
     } else {
-      if (name.startsWith("AUTH_")) {
+      const placeholder = placeholderEnv[name];
+      if (placeholder !== undefined) {
+        console.warn(`Warning: ${name} is not set. Using placeholder value for build.`);
+        defines[name] = JSON.stringify(placeholder);
+      } else if (name.startsWith("AUTH_")) {
         console.warn(`Warning: ${name} is not set. This is optional for testing purposes.`);
         defines[name] = JSON.stringify("");
       } else {
@@ -61,11 +69,7 @@ function createEnvDefines(environmentVariables: string[], generatedAtBuild: Reco
 }
 
 export function generateSupabaseStorageKey(): string | null {
-  const SUPABASE_URL = process.env.SUPABASE_URL;
-  if (!SUPABASE_URL) {
-    console.error("SUPABASE_URL environment variable is not set");
-    return null;
-  }
+  const SUPABASE_URL = process.env.SUPABASE_URL ?? "https://example.supabase.co";
 
   const urlParts = SUPABASE_URL.split(".");
   if (urlParts.length === 0) {

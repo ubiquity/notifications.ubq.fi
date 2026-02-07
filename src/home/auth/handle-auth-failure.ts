@@ -1,6 +1,6 @@
 import { clearStoredSession } from "../getters/get-github-access-token";
 import { toolbar } from "../ready-toolbar";
-import { getSupabase, renderGitHubLoginButton } from "../rendering/render-github-login-button";
+import * as githubLogin from "../rendering/render-github-login-button";
 
 let isHandlingAuthFailure = false;
 
@@ -17,7 +17,7 @@ export async function handleAuthFailure(reason?: string) {
   }
 
   try {
-    const supabase = getSupabase();
+    const supabase = githubLogin.getSupabase();
     if (supabase) {
       await supabase.auth.signOut();
     }
@@ -33,7 +33,7 @@ export async function handleAuthFailure(reason?: string) {
       const loginButton = authElement.querySelector("#github-login-button");
       if (loginButton) loginButton.remove();
     }
-    renderGitHubLoginButton();
+    githubLogin.renderGitHubLoginButton();
     if (toolbar) {
       toolbar.removeAttribute("data-authenticated");
     }
