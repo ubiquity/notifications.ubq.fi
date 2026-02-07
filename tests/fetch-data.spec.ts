@@ -138,12 +138,7 @@ describe("fetch-data helpers", () => {
       },
     ];
 
-    const result = await processNotifications(
-      notifications,
-      pullRequests as unknown as GitHubPullRequest[],
-      issues as unknown as GitHubIssue[],
-      "token"
-    );
+    const result = await processNotifications(notifications, pullRequests as unknown as GitHubPullRequest[], issues as unknown as GitHubIssue[], "token");
     expect(result).not.toBeNull();
     if (!result) return;
     expect(result.length).toBe(1);
@@ -154,20 +149,24 @@ describe("fetch-data helpers", () => {
   });
 
   it("fetchAllNotifications saves to cache when data returns", async () => {
-    // Mock fetch for pulls and issues
+    // Mock fetch for pulls and issues.
     const issue: Partial<GitHubIssue> = {
       url: "https://api.github.com/repos/owner/repo/issues/1",
       state: "open",
       repository_url: "https://api.github.com/repos/owner/repo",
       labels: [{ name: "Priority: High" } as GitHubLabel],
     };
-    const mockFetch = mock() as unknown as ReturnType<typeof mock>;
-    mockFetch
-      .mockResolvedValueOnce({ ok: true, json: mock(async () => []) } as unknown as Response) // pulls
-      .mockResolvedValueOnce({ ok: true, json: mock(async () => [issue]) } as unknown as Response) // issues
+    testGlobals.fetch = mock(async (url: string | URL | Request) => {
+      const u = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+      if (u.includes("partner-pull-requests")) {
+        return { ok: true, json: async () => [] } as unknown as Response;
+      }
+      if (u.includes("partner-open-issues")) {
+        return { ok: true, json: async () => [issue] } as unknown as Response;
+      }
       // Any extra fetch calls (e.g. viewer login lookup) should still succeed.
-      .mockResolvedValue({ ok: true, json: mock(async () => ({})) } as unknown as Response);
-    testGlobals.fetch = mockFetch as unknown as typeof fetch;
+      return { ok: true, json: async () => ({}) } as unknown as Response;
+    }) as unknown as typeof fetch;
 
     const result = await fetchAllNotifications();
     expect(indexedDb.saveNotificationsToCache).toHaveBeenCalled();
