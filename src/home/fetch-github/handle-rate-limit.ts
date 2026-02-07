@@ -3,7 +3,7 @@ import { Octokit } from "@octokit/rest";
 import { getGitHubUser } from "../getters/get-github-user";
 import { toolbar } from "../ready-toolbar";
 import { renderErrorInModal } from "../rendering/display-popup-modal";
-import { gitHubLoginButton } from "../rendering/render-github-login-button";
+import * as githubLogin from "../rendering/render-github-login-button";
 import { modal } from "../rendering/render-preview-modal";
 import { displayPopupMessage } from "../rendering/display-popup-modal";
 
@@ -35,7 +35,7 @@ export async function handleRateLimit(octokit?: Octokit, error?: RequestError) {
         behavior: "smooth",
       });
 
-      gitHubLoginButton?.classList.add("highlight");
+      githubLogin.gitHubLoginButton?.classList.add("highlight");
     }
   }
 
