@@ -8,6 +8,7 @@ export async function displayGitHubUserInformation(gitHubUser: GitHubUser) {
   authenticatedDivElement.id = "authenticated";
   authenticatedDivElement.classList.add("user-container");
   if (!toolbar) throw new Error("toolbar not found");
+  if (!authenticationElement) throw new Error("authentication element not found");
 
   const img = document.createElement("img");
   if (gitHubUser.avatar_url) {
@@ -27,6 +28,11 @@ export async function displayGitHubUserInformation(gitHubUser: GitHubUser) {
 
   authenticatedDivElement.addEventListener("click", async function signOut() {
     const supabase = getSupabase();
+    if (!supabase) {
+      renderErrorInModal(new Error("Supabase client unavailable"), "Error logging out");
+      alert("Error logging out");
+      return;
+    }
     const { error } = await supabase.auth.signOut();
     if (error) {
       renderErrorInModal(error, "Error logging out");

@@ -1,0 +1,11 @@
+[test]
+# Ensure DOM APIs exist in tests
+preload = ["./tests/happydom-setup.ts", "./tests/setup-env.ts"]
+
+# Coverage output is used by CI (text + lcov)
+coverage = true
+coverageReporter = ["text", "lcov"]
+
+# Keep CI output consistent and uploadable (equivalent to:
+# `bun test --reporter=junit --reporter-outfile=junit.xml`)
+reporter = { junit = "junit.xml" }

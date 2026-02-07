@@ -1,3 +1,5 @@
 export class Octokit {
-  request = jest.fn().mockResolvedValue({ data: [] });
+  async request() {
+    return { data: [] };
+  }
 }

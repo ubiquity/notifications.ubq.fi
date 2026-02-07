@@ -1,4 +1,7 @@
-/** @jest-environment jsdom */
+import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
+
+import * as indexedDb from "../src/home/getters/get-indexed-db";
+import type { GitHubIssue, GitHubLabel, GitHubNotification, GitHubNotifications, GitHubPullRequest } from "../src/home/github-types";
 
 type TestGlobals = typeof globalThis & {
   SUPABASE_URL: string;
@@ -7,104 +10,90 @@ type TestGlobals = typeof globalThis & {
 };
 
 // Minimal SUPABASE env + client mock to satisfy transitive imports
-const testGlobals = global as TestGlobals;
+const testGlobals = globalThis as TestGlobals;
 testGlobals.SUPABASE_URL = "test";
 testGlobals.SUPABASE_ANON_KEY = "test";
-jest.mock("@supabase/supabase-js", () => ({
-  createClient: jest.fn(() => ({})),
+
+mock.module("@supabase/supabase-js", () => ({
+  createClient: mock(() => ({})),
 }));
 
-// Local stubs (jest config mappers do not run under bun test)
-jest.mock("@octokit/rest", () => ({
+// Keep Octokit interactions local to the test process (no network calls).
+mock.module("@octokit/rest", () => ({
   Octokit: class {
-    request = jest.fn().mockResolvedValue({ data: [] });
+    request = mock(async () => ({ data: [] }));
   },
 }));
-jest.mock("@octokit/request-error", () => {
-  return {
-    RequestError: class RequestError extends Error {
-      status?: number;
-    },
-  };
-});
 
-import * as indexedDb from "../src/home/getters/get-indexed-db";
-import { fetchIssues, fetchPullRequests, fetchAllNotifications, processNotifications, getIssueNotifications } from "../src/home/fetch-github/fetch-data";
-import { GitHubIssue, GitHubLabel, GitHubNotification, GitHubNotifications, GitHubPullRequest } from "../src/home/github-types";
+mock.module("@octokit/request-error", () => ({
+  RequestError: class RequestError extends Error {
+    status?: number;
+  },
+}));
 
-let saveNotificationsToCacheSpy: jest.SpiedFunction<typeof indexedDb.saveNotificationsToCache>;
-let saveAggregatedNotificationsToCacheSpy: jest.SpiedFunction<typeof indexedDb.saveAggregatedNotificationsToCache>;
+// Make getGitHubAccessToken() return a stable token without calling real Supabase.
+mock.module("../src/home/rendering/render-github-login-button", () => ({
+  checkSupabaseSession: mock(async () => ({
+    provider_token: "test-token",
+    expires_at: Math.floor(Date.now() / 1000) + 3600,
+  })),
+}));
+
+const fetchData = await import("../src/home/fetch-github/fetch-data");
+const { fetchIssues, fetchPullRequests, fetchAllNotifications, processNotifications } = fetchData;
 
 describe("fetch-data helpers", () => {
   const realFetch = testGlobals.fetch;
 
+  let saveNotificationsToCacheSpy: ReturnType<typeof spyOn> | null = null;
+  let saveAggregatedNotificationsToCacheSpy: ReturnType<typeof spyOn> | null = null;
+
   beforeEach(() => {
-    saveNotificationsToCacheSpy = jest.spyOn(indexedDb, "saveNotificationsToCache").mockResolvedValue(undefined);
-    saveAggregatedNotificationsToCacheSpy = jest.spyOn(indexedDb, "saveAggregatedNotificationsToCache").mockResolvedValue(undefined);
+    saveNotificationsToCacheSpy = spyOn(indexedDb, "saveNotificationsToCache").mockResolvedValue(undefined);
+    saveAggregatedNotificationsToCacheSpy = spyOn(indexedDb, "saveAggregatedNotificationsToCache").mockResolvedValue(undefined);
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    saveNotificationsToCacheSpy?.mockRestore();
+    saveAggregatedNotificationsToCacheSpy?.mockRestore();
+    saveNotificationsToCacheSpy = null;
+    saveAggregatedNotificationsToCacheSpy = null;
     testGlobals.fetch = realFetch;
   });
 
   it("fetchIssues returns [] on non-ok response", async () => {
-    testGlobals.fetch = jest
-      .fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>()
-      .mockResolvedValue({ ok: false, status: 500, statusText: "Internal Error" } as Response);
+    testGlobals.fetch = mock(async () => ({ ok: false, status: 500, statusText: "Internal Error" }) as Response) as unknown as typeof fetch;
     const issues = await fetchIssues();
     expect(issues).toEqual([]);
   });
 
   it("fetchPullRequests returns parsed JSON on ok", async () => {
     const pr: Partial<GitHubPullRequest> = { url: "https://api.github.com/repos/owner/repo/pulls/1", state: "open", draft: false, body: "" };
-    testGlobals.fetch = jest
-      .fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>()
-      .mockResolvedValue({ ok: true, json: jest.fn().mockResolvedValue([pr]) } as unknown as Response);
+    testGlobals.fetch = mock(async () => ({ ok: true, json: mock(async () => [pr]) }) as unknown as Response) as unknown as typeof fetch;
     const pulls = await fetchPullRequests();
     expect(pulls.length).toBe(1);
     expect(pulls[0].url).toBe(pr.url);
   });
 
   it("pre-filter excludes disallowed reasons and repos", async () => {
-    const devpoolRepos = new Set(["owner/repo"]);
     const notifications: GitHubNotifications = [
       {
         id: "n1",
         reason: "comment", // allowed; repo matches
-        subject: { title: "Ignored", url: "https://api.github.com/repos/owner/repo/issues/1", type: "Issue" },
+        subject: { title: "Allowed", url: "https://api.github.com/repos/owner/repo/issues/42", type: "Issue" },
         repository: { full_name: "owner/repo" },
         updated_at: "2023-01-01T00:00:00Z",
       } as unknown as GitHubNotification,
-      {
-        id: "n2",
-        reason: "assign", // allowed reason, but wrong repo
-        subject: { title: "Wrong Repo", url: "https://api.github.com/repos/other/repo/issues/2", type: "Issue" },
-        repository: { full_name: "other/repo" },
-        updated_at: "2023-01-01T00:00:00Z",
-      } as unknown as GitHubNotification,
-    ];
-
-    const issues: Partial<GitHubIssue>[] = [
-      { url: "https://api.github.com/repos/owner/repo/issues/1", state: "open", repository_url: "https://api.github.com/repos/owner/repo" },
-    ];
-    const result = await getIssueNotifications(devpoolRepos, notifications, issues as unknown as GitHubIssue[], "token");
-    expect(result).toHaveLength(1);
-    expect(result?.[0]?.notification.id).toBe("n1");
-  });
-
-  it("processNotifications filters by Priority label and counts backlinks for issues", async () => {
-    const notifications: GitHubNotifications = [
       {
         id: "n3",
-        reason: "assign",
-        subject: { title: "Issue With Priority", url: "https://api.github.com/repos/owner/repo/issues/42", type: "Issue" },
-        repository: { full_name: "owner/repo" },
+        reason: "comment", // allowed, but repo does not match devpool set (filtered out)
+        subject: { title: "Wrong Repo", url: "https://api.github.com/repos/other/repo/issues/42", type: "Issue" },
+        repository: { full_name: "other/repo" },
         updated_at: "2023-01-01T00:00:00Z",
       } as unknown as GitHubNotification,
       {
         id: "n4",
-        reason: "assign",
+        reason: "comment", // allowed, repo matches, but issue has no priority label (filtered out)
         subject: { title: "Issue Without Priority", url: "https://api.github.com/repos/owner/repo/issues/43", type: "Issue" },
         repository: { full_name: "owner/repo" },
         updated_at: "2023-01-01T00:00:00Z",
@@ -149,7 +138,12 @@ describe("fetch-data helpers", () => {
       },
     ];
 
-    const result = await processNotifications(notifications, pullRequests as unknown as GitHubPullRequest[], issues as unknown as GitHubIssue[], "token");
+    const result = await processNotifications(
+      notifications,
+      pullRequests as unknown as GitHubPullRequest[],
+      issues as unknown as GitHubIssue[],
+      "token"
+    );
     expect(result).not.toBeNull();
     if (!result) return;
     expect(result.length).toBe(1);
@@ -167,14 +161,14 @@ describe("fetch-data helpers", () => {
       repository_url: "https://api.github.com/repos/owner/repo",
       labels: [{ name: "Priority: High" } as GitHubLabel],
     };
-    testGlobals.fetch = jest
-      .fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>()
-      .mockResolvedValueOnce({ ok: true, json: jest.fn().mockResolvedValue([]) } as unknown as Response) // pulls
-      .mockResolvedValueOnce({ ok: true, json: jest.fn().mockResolvedValue([issue]) } as unknown as Response); // issues
+    testGlobals.fetch = mock(async () => ({ ok: true, json: mock(async () => []) }) as unknown as Response) as unknown as typeof fetch;
+    (testGlobals.fetch as unknown as ReturnType<typeof mock>)
+      .mockResolvedValueOnce({ ok: true, json: mock(async () => []) } as unknown as Response) // pulls
+      .mockResolvedValueOnce({ ok: true, json: mock(async () => [issue]) } as unknown as Response); // issues
 
     const result = await fetchAllNotifications();
-    expect(saveNotificationsToCacheSpy).toHaveBeenCalled();
-    expect(saveAggregatedNotificationsToCacheSpy).toHaveBeenCalled();
+    expect(indexedDb.saveNotificationsToCache).toHaveBeenCalled();
+    expect(indexedDb.saveAggregatedNotificationsToCache).toHaveBeenCalled();
     // With empty notifications from Octokit stub, returns []
     expect(result).toEqual([]);
   });

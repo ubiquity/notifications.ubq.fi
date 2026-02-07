@@ -1,3 +1,5 @@
+import { afterEach, mock } from "bun:test";
+
 // Only set DOM if available (happy-dom preload provides document/window)
 if (typeof document !== "undefined") {
   document.body.innerHTML = `
@@ -67,10 +69,20 @@ class MockDOMParser implements DOMParser {
 }
 globalThis.DOMParser = MockDOMParser;
 
-// fetch mock using jest.fn to simulate fetch/json responses
-export const fetchMock = jest.fn(() => Promise.resolve({ json: async () => ({}) })) as unknown as jest.MockedFunction<typeof fetch>;
+// fetch mock to simulate fetch/json responses
+export const fetchMock = mock(() =>
+  Promise.resolve({
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    json: async () => ({}),
+  })
+) as unknown as typeof fetch & {
+  mock: { calls: unknown[] };
+  mockClear: () => void;
+};
 globalThis.fetch = fetchMock as unknown as typeof fetch;
-afterEach(() => fetchMock.mockReset());
+afterEach(() => fetchMock.mockClear());
 
 // URL.createObjectURL mock
 globalThis.URL.createObjectURL = (() => "blob://mock") as typeof URL.createObjectURL;

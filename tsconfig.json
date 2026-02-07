@@ -107,6 +107,8 @@
   },
   "exclude": [
     "tests/**",
+    "test/**",
+    "serve.ts",
     "src/home/fetch-github/test-all-notifications.ts"
   ]
 }

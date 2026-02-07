@@ -1,4 +1,5 @@
 import "fake-indexeddb/auto";
+import { beforeEach, describe, expect, it } from "bun:test";
 import {
   saveNotificationsToCache,
   getNotificationsFromCache,
@@ -7,6 +8,12 @@ import {
   getAggregatedNotificationsFromCache,
 } from "../src/home/getters/get-indexed-db";
 import { GitHubNotifications } from "../src/home/github-types";
+
+// In Bun, `fake-indexeddb/auto` installs on `window` when it exists.
+// Ensure the global `indexedDB` binding is available for app code.
+if (typeof indexedDB === "undefined" && typeof window !== "undefined" && (window as unknown as { indexedDB?: unknown }).indexedDB) {
+  (globalThis as unknown as { indexedDB?: unknown }).indexedDB = (window as unknown as { indexedDB?: unknown }).indexedDB;
+}
 
 describe("IndexedDB cache functions", () => {
   beforeEach(async () => {
@@ -54,7 +61,7 @@ describe("IndexedDB cache functions", () => {
 
     // Mock time to make item expired (TTL is 5 minutes)
     const realNow = Date.now;
-    Date.now = jest.fn(() => realNow() + 10 * 60 * 1000); // 10 minutes later
+    Date.now = () => realNow() + 10 * 60 * 1000; // 10 minutes later
 
     const result = await getNotificationsFromCache();
     expect(result.length).toBe(0);

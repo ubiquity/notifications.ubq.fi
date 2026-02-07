@@ -11,8 +11,8 @@ jobs:
     with:
       project: notifications-ubq-fi
       entrypoint: serve.ts
-      bun_version: 1.3.4
-      install_command: bun install
+      bun_version: 1.3.8
+      install_command: bun ci --frozen-lockfile
       build_command: bun run build
       include: |
         static/**
