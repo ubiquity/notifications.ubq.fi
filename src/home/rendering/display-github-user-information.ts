@@ -37,6 +37,7 @@ export async function displayGitHubUserInformation(gitHubUser: GitHubUser) {
     if (error) {
       renderErrorInModal(error, "Error logging out");
       alert("Error logging out");
+      return;
     }
     window.location.replace("/");
   });

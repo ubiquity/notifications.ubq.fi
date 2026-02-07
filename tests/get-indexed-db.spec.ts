@@ -63,10 +63,12 @@ describe("IndexedDB cache functions", () => {
     const realNow = Date.now;
     Date.now = () => realNow() + 10 * 60 * 1000; // 10 minutes later
 
-    const result = await getNotificationsFromCache();
-    expect(result.length).toBe(0);
-
-    Date.now = realNow;
+    try {
+      const result = await getNotificationsFromCache();
+      expect(result.length).toBe(0);
+    } finally {
+      Date.now = realNow;
+    }
   });
 
   it("overwrites cache on save", async () => {
