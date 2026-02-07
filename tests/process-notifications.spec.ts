@@ -53,7 +53,20 @@ describe("processNotifications", () => {
   it("filters out draft PRs", async () => {
     const token = "test-token";
     const devpoolRepos = new Set(["owner/repo"]);
-    const notifications: GitHubNotifications = [];
+    const notifications = [
+      {
+        id: "1",
+        reason: "review_requested",
+        subject: {
+          title: "Draft PR",
+          url: "https://api.github.com/repos/owner/repo/pulls/123",
+          type: "PullRequest",
+          latest_comment_url: "https://api.github.com/repos/owner/repo/issues/comments/123",
+        },
+        repository: { full_name: "owner/repo" },
+        updated_at: "2023-01-01T00:00:00Z",
+      },
+    ] as unknown as GitHubNotifications;
     const pullRequests = [
       {
         url: "https://api.github.com/repos/owner/repo/pulls/123",
