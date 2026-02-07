@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:te
 
 import * as indexedDb from "../src/home/getters/get-indexed-db";
 import type { GitHubIssue, GitHubLabel, GitHubNotification, GitHubNotifications, GitHubPullRequest } from "../src/home/github-types";
+import { RequestError } from "./stubs/octokit-request-error";
 
 type TestGlobals = typeof globalThis & {
   SUPABASE_URL: string;
@@ -25,11 +26,7 @@ mock.module("@octokit/rest", () => ({
   },
 }));
 
-mock.module("@octokit/request-error", () => ({
-  RequestError: class RequestError extends Error {
-    status?: number;
-  },
-}));
+mock.module("@octokit/request-error", () => ({ RequestError }));
 
 // Make getGitHubAccessToken() return a stable token without calling real Supabase.
 mock.module("../src/home/rendering/render-github-login-button", () => ({

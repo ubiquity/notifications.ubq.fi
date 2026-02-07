@@ -57,7 +57,7 @@
     "fake-indexeddb": "^6.2.5",
     "glob-parent": "^6.0.2",
     "husky": "^8.0.3",
-    "happy-dom": "^18.0.1",
+    "happy-dom": "^20.0.2",
     "knip": "^3.3.0",
     "lint-staged": "^15.1.0",
     "npm-run-all": "^4.1.5",

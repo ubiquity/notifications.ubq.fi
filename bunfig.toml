@@ -6,6 +6,8 @@ preload = ["./tests/happydom-setup.ts", "./tests/setup-env.ts"]
 coverage = true
 coverageReporter = ["text", "lcov"]
 
-# Keep local test output human-readable (default console reporter).
-# CI can additionally generate JUnit by running:
-# `bun test --reporter=junit --reporter-outfile=junit.xml`
+# Keep local test output human-readable while also producing a JUnit XML artifact for CI.
+
+[test.reporter]
+dots = true
+junit = "junit.xml"

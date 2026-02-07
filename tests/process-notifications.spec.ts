@@ -69,15 +69,27 @@ describe("processNotifications", () => {
     expect(result).toHaveLength(0);
   });
 
-  it("filters out closed issues", async () => {
+  it("returns issue notifications when the issue is present", async () => {
     const token = "test-token";
     const devpoolRepos = new Set(["owner/repo"]);
-    const notifications: GitHubNotifications = [];
+    const notifications = [
+      {
+        id: "1",
+        reason: "comment",
+        subject: {
+          title: "Issue",
+          url: "https://api.github.com/repos/owner/repo/issues/456",
+          type: "Issue",
+        },
+        repository: { full_name: "owner/repo" },
+        updated_at: "2023-01-01T00:00:00Z",
+      },
+    ] as unknown as GitHubNotifications;
     const issues = [
-      { url: "https://api.github.com/repos/owner/repo/issues/456", state: "closed", repository_url: "https://api.github.com/repos/owner/repo" },
+      { url: "https://api.github.com/repos/owner/repo/issues/456", state: "open", repository_url: "https://api.github.com/repos/owner/repo" },
     ] as unknown as GitHubIssue[];
     const result = await getIssueNotifications(devpoolRepos, notifications, issues, token);
-    expect(result).toHaveLength(0);
+    expect(result).toHaveLength(1);
+    expect(result[0].issue?.url).toBe(issues[0].url);
   });
 });
-

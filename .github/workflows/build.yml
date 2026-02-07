@@ -34,10 +34,6 @@ jobs:
       - name: Test
         run: bun test
 
-      - name: Generate JUnit report
-        if: always()
-        run: bun test --reporter=junit --reporter-outfile=junit.xml
-
       - name: Upload test artifacts
         if: always()
         uses: actions/upload-artifact@v4
