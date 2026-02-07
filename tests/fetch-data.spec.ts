@@ -161,10 +161,13 @@ describe("fetch-data helpers", () => {
       repository_url: "https://api.github.com/repos/owner/repo",
       labels: [{ name: "Priority: High" } as GitHubLabel],
     };
-    testGlobals.fetch = mock(async () => ({ ok: true, json: mock(async () => []) }) as unknown as Response) as unknown as typeof fetch;
-    (testGlobals.fetch as unknown as ReturnType<typeof mock>)
+    const mockFetch = mock() as unknown as ReturnType<typeof mock>;
+    mockFetch
       .mockResolvedValueOnce({ ok: true, json: mock(async () => []) } as unknown as Response) // pulls
-      .mockResolvedValueOnce({ ok: true, json: mock(async () => [issue]) } as unknown as Response); // issues
+      .mockResolvedValueOnce({ ok: true, json: mock(async () => [issue]) } as unknown as Response) // issues
+      // Any extra fetch calls (e.g. viewer login lookup) should still succeed.
+      .mockResolvedValue({ ok: true, json: mock(async () => ({})) } as unknown as Response);
+    testGlobals.fetch = mockFetch as unknown as typeof fetch;
 
     const result = await fetchAllNotifications();
     expect(indexedDb.saveNotificationsToCache).toHaveBeenCalled();

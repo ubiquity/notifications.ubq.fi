@@ -12,14 +12,11 @@ const testGlobals = globalThis as TestGlobals;
 testGlobals.SUPABASE_URL = "test";
 testGlobals.SUPABASE_ANON_KEY = "test";
 
-// Ensure the mocked module id matches what runtime resolves.
-const homeModuleId = new URL("../src/home/home.ts", import.meta.url).pathname;
-
 beforeEach(() => {
   document.body.innerHTML = '<div id="issues-container"></div>';
 
   // Avoid importing src/home/home.ts (it has side effects at import time).
-  mock.module(homeModuleId, () => ({
+  mock.module("../src/home/home.ts", () => ({
     notificationsContainer: document.getElementById("issues-container") as HTMLDivElement,
     shouldShowBotNotifications: false,
   }));
@@ -80,4 +77,3 @@ describe("renderNotifications", () => {
     expect(elements.length).toBe(1);
   });
 });
-

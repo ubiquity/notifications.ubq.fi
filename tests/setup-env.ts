@@ -71,11 +71,20 @@ globalThis.DOMParser = MockDOMParser;
 
 // fetch mock to simulate fetch/json responses
 export const fetchMock = mock(() =>
-  Promise.resolve({
-    ok: true,
-    status: 200,
-    statusText: "OK",
-    json: async () => ({}),
+  Promise.resolve().then(() => {
+    const headers = typeof Headers !== "undefined" ? new Headers() : ({} as unknown as Headers);
+    const res: unknown = {
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      headers,
+      json: async () => ({}),
+      text: async () => "",
+    };
+
+    // Minimal clone implementation for code paths that expect it.
+    (res as { clone?: () => Response }).clone = () => res as Response;
+    return res as Response;
   })
 ) as unknown as typeof fetch & {
   mock: { calls: unknown[] };

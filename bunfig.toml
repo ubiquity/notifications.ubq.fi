@@ -8,4 +8,6 @@ coverageReporter = ["text", "lcov"]
 
 # Keep CI output consistent and uploadable (equivalent to:
 # `bun test --reporter=junit --reporter-outfile=junit.xml`)
+# Bun currently supports either console output (default) or a reporter like JUnit.
+# We keep JUnit here for CI artifact upload.
 reporter = { junit = "junit.xml" }
