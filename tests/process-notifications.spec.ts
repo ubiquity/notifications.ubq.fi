@@ -1,25 +1,6 @@
-/** @jest-environment jsdom */
+import { describe, expect, it } from "bun:test";
 
-type TestGlobals = typeof globalThis & {
-  SUPABASE_URL: string;
-  SUPABASE_ANON_KEY: string;
-};
-
-const testGlobals = global as TestGlobals;
-testGlobals.SUPABASE_URL = "test";
-testGlobals.SUPABASE_ANON_KEY = "test";
-
-jest.mock("@supabase/supabase-js", () => ({
-  createClient: jest.fn(() => ({})),
-}));
-jest.mock("../src/home/rendering/render-preview-modal");
-jest.mock("../src/home/ready-toolbar");
-jest.mock("../src/home/rendering/render-github-login-button");
-jest.mock("../src/home/getters/get-github-access-token", () => ({
-  getGitHubAccessToken: jest.fn(),
-}));
-
-import { processNotifications, getPullRequestNotifications, getIssueNotifications } from "../src/home/fetch-github/fetch-data";
+import { getIssueNotifications, getPullRequestNotifications, processNotifications } from "../src/home/fetch-github/fetch-data";
 import { GitHubIssue, GitHubNotifications, GitHubPullRequest } from "../src/home/github-types";
 
 describe("processNotifications", () => {
@@ -62,7 +43,6 @@ describe("processNotifications", () => {
       },
     ] as unknown as GitHubIssue[];
 
-    expect(async () => await processNotifications(notifications, pullRequests, issues, token)).not.toThrow();
     const result = await processNotifications(notifications, pullRequests, issues, token);
     expect(result).not.toBeNull();
     if (!result) return;
@@ -73,7 +53,20 @@ describe("processNotifications", () => {
   it("filters out draft PRs", async () => {
     const token = "test-token";
     const devpoolRepos = new Set(["owner/repo"]);
-    const notifications: GitHubNotifications = [];
+    const notifications = [
+      {
+        id: "1",
+        reason: "review_requested",
+        subject: {
+          title: "Draft PR",
+          url: "https://api.github.com/repos/owner/repo/pulls/123",
+          type: "PullRequest",
+          latest_comment_url: "https://api.github.com/repos/owner/repo/issues/comments/123",
+        },
+        repository: { full_name: "owner/repo" },
+        updated_at: "2023-01-01T00:00:00Z",
+      },
+    ] as unknown as GitHubNotifications;
     const pullRequests = [
       {
         url: "https://api.github.com/repos/owner/repo/pulls/123",
@@ -89,14 +82,50 @@ describe("processNotifications", () => {
     expect(result).toHaveLength(0);
   });
 
-  it("filters out closed issues", () => {
+  it("returns issue notifications when the issue is present", async () => {
     const token = "test-token";
     const devpoolRepos = new Set(["owner/repo"]);
-    const notifications: GitHubNotifications = [];
+    const notifications = [
+      {
+        id: "1",
+        reason: "comment",
+        subject: {
+          title: "Issue",
+          url: "https://api.github.com/repos/owner/repo/issues/456",
+          type: "Issue",
+        },
+        repository: { full_name: "owner/repo" },
+        updated_at: "2023-01-01T00:00:00Z",
+      },
+    ] as unknown as GitHubNotifications;
+    const issues = [
+      { url: "https://api.github.com/repos/owner/repo/issues/456", state: "open", repository_url: "https://api.github.com/repos/owner/repo" },
+    ] as unknown as GitHubIssue[];
+    const result = await getIssueNotifications(devpoolRepos, notifications, issues, token);
+    expect(result).toHaveLength(1);
+    expect(result[0].issue?.url).toBe(issues[0].url);
+  });
+
+  it("filters out closed issues", async () => {
+    const token = "test-token";
+    const devpoolRepos = new Set(["owner/repo"]);
+    const notifications = [
+      {
+        id: "1",
+        reason: "comment",
+        subject: {
+          title: "Closed Issue",
+          url: "https://api.github.com/repos/owner/repo/issues/456",
+          type: "Issue",
+        },
+        repository: { full_name: "owner/repo" },
+        updated_at: "2023-01-01T00:00:00Z",
+      },
+    ] as unknown as GitHubNotifications;
     const issues = [
       { url: "https://api.github.com/repos/owner/repo/issues/456", state: "closed", repository_url: "https://api.github.com/repos/owner/repo" },
     ] as unknown as GitHubIssue[];
-    const result = getIssueNotifications(devpoolRepos, notifications, issues, token);
-    return result.then((r) => expect(r).toHaveLength(0));
+    const result = await getIssueNotifications(devpoolRepos, notifications, issues, token);
+    expect(result).toHaveLength(0);
   });
 });

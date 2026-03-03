@@ -9,9 +9,15 @@ cp .env.example .env
 Ensure that `SUPABASE_URL` and `SUPABASE_ANON_KEY` are set. This is for GitHub user registration on login.
 
 ```sh
-bun install
-bun run start
+bun ci
+bun run dev
 open http://localhost:8080
+```
+
+### Tests
+
+```sh
+bun test
 ```
 
 ### Automatic Light Mode

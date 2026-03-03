@@ -15,22 +15,39 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
-        # with:
-        # submodules: "recursive" # Ensures submodules are checked out
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version-file: ".bun-version"
+          cache: true
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: bun ci --frozen-lockfile
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Test
+        run: bun test
+
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-artifacts
+          path: |
+            junit.xml
+            coverage
 
       - name: Build
         run: bun run build
-        env: # Set environment variables for the build
-          SUPABASE_URL: "https://wfzpewmlyiozupulbuur.supabase.co"
-          SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndmenBld21seWlvenVwdWxidXVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE2OTU2NzQzMzksImV4cCI6MjAxMTI1MDMzOX0.SKIL3Q0NOBaMehH0ekFspwgcu3afp3Dl9EDzPqs1nKs"
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
