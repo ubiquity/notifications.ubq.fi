@@ -17,4 +17,3 @@ Object.assign(globalThis, {
   MouseEvent: window.MouseEvent,
   KeyboardEvent: window.KeyboardEvent,
 });
-

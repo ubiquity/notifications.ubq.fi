@@ -40,4 +40,3 @@ describe("renderErrorInModal", () => {
     expect(console.error).toHaveBeenCalledWith("Test error");
   });
 });
-

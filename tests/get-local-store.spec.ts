@@ -24,4 +24,3 @@ describe("setLocalStore and getLocalStore", () => {
     expect(result).toEqual(value);
   });
 });
-
