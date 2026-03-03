@@ -32,8 +32,8 @@ jobs:
           SUPABASE_ANON_KEY: example
 
   deploy-production:
-    # Only deploy from canonical upstream repo and only when token is configured.
-    if: github.event_name != 'pull_request' && github.repository == 'ubiquity/notifications.ubq.fi' && secrets.DENO_DEPLOY_TOKEN != ''
+    # Only deploy from canonical upstream repo.
+    if: github.event_name != 'pull_request' && github.repository == 'ubiquity/notifications.ubq.fi'
     uses: ubiquity/deno-deploy-workflow/.github/workflows/deno-deploy-reusable.yml@main
     with:
       project: notifications-ubq-fi
