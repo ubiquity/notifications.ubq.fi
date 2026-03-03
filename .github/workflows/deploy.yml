@@ -9,7 +9,8 @@ jobs:
   # NOTE: PRs from forks do not receive repository secrets, so attempting to deploy would fail.
   # Keep a green "deploy" check for PRs by building with placeholder env vars instead.
   deploy:
-    if: github.event_name == 'pull_request'
+    # Run dry-run build for PRs and for fork pushes (no deploy secrets there).
+    if: github.event_name == 'pull_request' || github.repository != 'ubiquity/notifications.ubq.fi'
     runs-on: ubuntu-22.04
     steps:
       - name: Check out repository
@@ -31,7 +32,8 @@ jobs:
           SUPABASE_ANON_KEY: example
 
   deploy-production:
-    if: github.event_name != 'pull_request'
+    # Only deploy from canonical upstream repo and only when token is configured.
+    if: github.event_name != 'pull_request' && github.repository == 'ubiquity/notifications.ubq.fi' && secrets.DENO_DEPLOY_TOKEN != ''
     uses: ubiquity/deno-deploy-workflow/.github/workflows/deno-deploy-reusable.yml@main
     with:
       project: notifications-ubq-fi
