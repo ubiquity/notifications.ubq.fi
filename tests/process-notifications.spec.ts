@@ -102,6 +102,8 @@ describe("processNotifications", () => {
       { url: "https://api.github.com/repos/owner/repo/issues/456", state: "open", repository_url: "https://api.github.com/repos/owner/repo" },
     ] as unknown as GitHubIssue[];
     const result = await getIssueNotifications(devpoolRepos, notifications, issues, token);
+    expect(result).not.toBeNull();
+    if (!result) return;
     expect(result).toHaveLength(1);
     expect(result[0].issue?.url).toBe(issues[0].url);
   });

@@ -13,7 +13,7 @@ This document defines expected behavior for `.github/workflows/deploy.yml`.
 - Job `deploy` runs (dry-run build with placeholder env)
 - Job `deploy-production` does not run
 
-### 2) Push on fork repo (`lustsazeus-lab/notifications.ubq.fi`)
+### 2) Push on any fork repository
 - Job `deploy` runs (dry-run build)
 - Job `deploy-production` does not run
 
