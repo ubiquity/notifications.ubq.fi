@@ -235,11 +235,6 @@ export async function getIssueNotifications(
         console.log("skipping ", notification.subject.title, "cause issue not found in fetched list");
         return null;
       }
-      if (issue.state && issue.state !== "open") {
-        console.log("skipping ", notification.subject.title, "cause issue is not open");
-        return null;
-      }
-
       return { notification, pullRequest: null, issue, backlinkCount: 0 } as GitHubAggregated;
     })
   );

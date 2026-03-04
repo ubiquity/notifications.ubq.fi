@@ -32,9 +32,14 @@ export async function displayGitHubUserInformation(gitHubUser: GitHubUser) {
       renderErrorInModal(new Error("Supabase client unavailable"), "Error logging out");
       return;
     }
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      renderErrorInModal(error, "Error logging out");
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        renderErrorInModal(error, "Error logging out");
+        return;
+      }
+    } catch (error) {
+      renderErrorInModal(error as Error, "Error logging out");
       return;
     }
     window.location.replace("/");

@@ -8,36 +8,38 @@ export async function handleAuthFailure(reason?: string) {
   if (isHandlingAuthFailure) return;
   isHandlingAuthFailure = true;
 
-  console.warn("Detected auth failure, signing out", reason ?? "");
-
   try {
-    clearStoredSession();
-  } catch (error) {
-    console.warn("Failed to clear stored session", error);
-  }
+    console.warn("Detected auth failure, signing out", reason ?? "");
 
-  try {
-    const supabase = githubLogin.getSupabase();
-    if (supabase) {
-      await supabase.auth.signOut();
+    try {
+      clearStoredSession();
+    } catch (error) {
+      console.warn("Failed to clear stored session", error);
     }
-  } catch (error) {
-    console.warn("Supabase sign-out failed", error);
-  }
 
-  if (typeof document !== "undefined") {
-    const authElement = document.getElementById("authentication");
-    if (authElement) {
-      const authenticated = authElement.querySelector("#authenticated");
-      if (authenticated) authenticated.remove();
-      const loginButton = authElement.querySelector("#github-login-button");
-      if (loginButton) loginButton.remove();
+    try {
+      const supabase = githubLogin.getSupabase();
+      if (supabase) {
+        await supabase.auth.signOut();
+      }
+    } catch (error) {
+      console.warn("Supabase sign-out failed", error);
     }
-    githubLogin.renderGitHubLoginButton();
-    if (toolbar) {
-      toolbar.removeAttribute("data-authenticated");
-    }
-  }
 
-  isHandlingAuthFailure = false;
+    if (typeof document !== "undefined") {
+      const authElement = document.getElementById("authentication");
+      if (authElement) {
+        const authenticated = authElement.querySelector("#authenticated");
+        if (authenticated) authenticated.remove();
+        const loginButton = authElement.querySelector("#github-login-button");
+        if (loginButton) loginButton.remove();
+      }
+      githubLogin.renderGitHubLoginButton();
+      if (toolbar) {
+        toolbar.removeAttribute("data-authenticated");
+      }
+    }
+  } finally {
+    isHandlingAuthFailure = false;
+  }
 }

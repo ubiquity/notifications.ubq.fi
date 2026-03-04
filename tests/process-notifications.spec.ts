@@ -106,7 +106,7 @@ describe("processNotifications", () => {
     expect(result[0].issue?.url).toBe(issues[0].url);
   });
 
-  it("filters out closed issues", async () => {
+  it("keeps unread notifications for closed issues", async () => {
     const token = "test-token";
     const devpoolRepos = new Set(["owner/repo"]);
     const notifications = [
@@ -126,6 +126,6 @@ describe("processNotifications", () => {
       { url: "https://api.github.com/repos/owner/repo/issues/456", state: "closed", repository_url: "https://api.github.com/repos/owner/repo" },
     ] as unknown as GitHubIssue[];
     const result = await getIssueNotifications(devpoolRepos, notifications, issues, token);
-    expect(result).toHaveLength(0);
+    expect(result).toHaveLength(1);
   });
 });
