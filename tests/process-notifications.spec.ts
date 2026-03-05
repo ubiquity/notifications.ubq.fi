@@ -49,7 +49,9 @@ describe("processNotifications", () => {
     expect(result).toHaveLength(1);
     expect(result[0].backlinkCount).toBeGreaterThanOrEqual(1);
   });
+});
 
+describe("getPullRequestNotifications", () => {
   it("filters out draft PRs", async () => {
     const token = "test-token";
     const devpoolRepos = new Set(["owner/repo"]);
@@ -81,7 +83,9 @@ describe("processNotifications", () => {
     const result = await getPullRequestNotifications(devpoolRepos, notifications, pullRequests, issues, token);
     expect(result).toHaveLength(0);
   });
+});
 
+describe("getIssueNotifications", () => {
   it("returns issue notifications when the issue is present", async () => {
     const token = "test-token";
     const devpoolRepos = new Set(["owner/repo"]);
@@ -128,6 +132,8 @@ describe("processNotifications", () => {
       { url: "https://api.github.com/repos/owner/repo/issues/456", state: "closed", repository_url: "https://api.github.com/repos/owner/repo" },
     ] as unknown as GitHubIssue[];
     const result = await getIssueNotifications(devpoolRepos, notifications, issues, token);
+    expect(result).not.toBeNull();
+    if (!result) return;
     expect(result).toHaveLength(1);
   });
 });
