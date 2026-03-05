@@ -1,13 +1,14 @@
 import { GitHubUser } from "../github-types";
 import { toolbar } from "../ready-toolbar";
 import { renderErrorInModal } from "./display-popup-modal";
-import { authenticationElement, getSupabase } from "./render-github-login-button";
+import * as githubLogin from "./render-github-login-button";
 
 export async function displayGitHubUserInformation(gitHubUser: GitHubUser) {
   const authenticatedDivElement = document.createElement("div");
   authenticatedDivElement.id = "authenticated";
   authenticatedDivElement.classList.add("user-container");
   if (!toolbar) throw new Error("toolbar not found");
+  if (!githubLogin.authenticationElement) throw new Error("authentication element not found");
 
   const img = document.createElement("img");
   if (gitHubUser.avatar_url) {
@@ -26,16 +27,25 @@ export async function displayGitHubUserInformation(gitHubUser: GitHubUser) {
   authenticatedDivElement.appendChild(img);
 
   authenticatedDivElement.addEventListener("click", async function signOut() {
-    const supabase = getSupabase();
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      renderErrorInModal(error, "Error logging out");
-      alert("Error logging out");
+    const supabase = githubLogin.getSupabase();
+    if (!supabase) {
+      renderErrorInModal(new Error("Supabase client unavailable"), "Error logging out");
+      return;
+    }
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        renderErrorInModal(error, "Error logging out");
+        return;
+      }
+    } catch (error) {
+      renderErrorInModal(error as Error, "Error logging out");
+      return;
     }
     window.location.replace("/");
   });
 
-  authenticationElement.appendChild(authenticatedDivElement);
+  githubLogin.authenticationElement.appendChild(authenticatedDivElement);
   toolbar.setAttribute("data-authenticated", "true");
   toolbar.classList.add("ready");
 }

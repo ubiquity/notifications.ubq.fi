@@ -235,7 +235,6 @@ export async function getIssueNotifications(
         console.log("skipping ", notification.subject.title, "cause issue not found in fetched list");
         return null;
       }
-
       return { notification, pullRequest: null, issue, backlinkCount: 0 } as GitHubAggregated;
     })
   );

@@ -7,7 +7,15 @@ config();
 
 const typescriptEntries = ["src/home/home.ts"];
 const cssEntries = ["static/style/style.css"];
-const entries = [...typescriptEntries, ...cssEntries, "static/manifest.json", "static/favicon-32.png", "static/favicon.png", "static/icon-192x192.png", "static/icon-512x512.png"];
+const entries = [
+  ...typescriptEntries,
+  ...cssEntries,
+  "static/manifest.json",
+  "static/favicon-32.png",
+  "static/favicon.png",
+  "static/icon-192x192.png",
+  "static/icon-512x512.png",
+];
 
 export const esBuildContext: esbuild.BuildOptions = {
   plugins: [invertColors, pwaManifest],
@@ -63,7 +71,7 @@ function createEnvDefines(environmentVariables: string[], generatedAtBuild: Reco
 export function generateSupabaseStorageKey(): string | null {
   const SUPABASE_URL = process.env.SUPABASE_URL;
   if (!SUPABASE_URL) {
-    console.error("SUPABASE_URL environment variable is not set");
+    console.error("Missing SUPABASE_URL environment variable");
     return null;
   }
 
