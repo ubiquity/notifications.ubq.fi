@@ -10,11 +10,11 @@ This document defines expected behavior for `.github/workflows/deploy.yml`.
 ## Trigger/Behavior Matrix
 
 ### 1) Pull Request (any repo)
-- Job `deploy` runs (dry-run build with placeholder env)
+- Job `deploy` runs (dry-run build with non-secret mock env configured in workflow)
 - Job `deploy-production` does not run
 
 ### 2) Push on any fork repository
-- Job `deploy` runs (dry-run build)
+- Job `deploy` runs (dry-run build with non-secret mock env configured in workflow)
 - Job `deploy-production` does not run
 
 ### 3) Push on upstream repo (`ubiquity/notifications.ubq.fi`)

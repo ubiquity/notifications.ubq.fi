@@ -84,13 +84,18 @@ export const fetchMock = mock(() =>
 
     // Minimal clone implementation for code paths that expect it.
     // Returning a new object avoids shared references if a consumer mutates it.
-    (res as { clone?: () => Response }).clone = () =>
-      ({
+    (res as { clone?: () => Response }).clone = () => {
+      const clonedHeaders =
+        typeof Headers !== "undefined" && headers instanceof Headers
+          ? new Headers(headers)
+          : headers;
+      return {
         ...(res as Record<string, unknown>),
-        headers,
+        headers: clonedHeaders,
         json: async () => ({}),
         text: async () => "",
-      }) as unknown as Response;
+      } as unknown as Response;
+    };
     return res as Response;
   })
 ) as unknown as typeof fetch & {
