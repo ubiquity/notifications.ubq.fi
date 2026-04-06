@@ -117,32 +117,27 @@
 }
 .pull-refresh-indicator {
   opacity: 0;
-  position: fixed;
-  top: 48px;
-  left: 0;
-  right: 0;
-  height: 50px;
+  height: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
-  transform: translateY(-100%);
-  transition: transform 0.2s ease-out;
-  z-index: 1000;
+  overflow: visible;
+  transition:
+    height 0.2s ease-out,
+    opacity 0.2s ease-out;
   pointer-events: none;
+  width: 100%;
 }
 .pull-refresh-spinner {
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   border: 4px solid #ffffff40;
   border-top: 4px solid #fff;
   border-radius: 50%;
   opacity: 1;
-  transition: 0.5s all ease-in-out;
-  animation: none;
-  pointer-events: none;
-}
-.pull-refresh-indicator .pull-refresh-spinner {
+  transition: filter 0.2s ease-in-out;
   animation: spin 1.5s cubic-bezier(1, 0, 1, 1) infinite alternate;
+  pointer-events: none;
 }
 @media (prefers-color-scheme: light) {
   .pull-refresh-indicator.refreshing .pull-refresh-spinner {
@@ -175,4 +170,54 @@
     filter: opacity(0);
     border-color: transparent;
   }
+}
+
+#mark-as-read-toggle {
+  position: fixed;
+  bottom: 12px;
+  left: 12px;
+  padding: 10px 12px;
+  background: rgba(12, 12, 12, 0.9);
+  color: #f6f7fb;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  font-size: 13px;
+  z-index: 9999;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  cursor: pointer;
+  max-width: 360px;
+  width: min(360px, calc(100vw - 24px));
+  box-sizing: border-box;
+  line-height: 1.45;
+  word-break: break-word;
+  backdrop-filter: blur(2px);
+  white-space: normal;
+  height: auto;
+  overflow: visible;
+  text-overflow: clip;
+  text-align: left;
+}
+
+.mark-as-read-checkbox {
+  margin-top: 0;
+}
+
+.mark-as-read-text {
+  flex: 1 1 240px;
+  white-space: normal;
+}
+
+.mark-as-read-heading {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.mark-as-read-caption {
+  opacity: 0.8;
+  white-space: normal;
+  font-size: 12px;
+  margin-top: 2px;
 }

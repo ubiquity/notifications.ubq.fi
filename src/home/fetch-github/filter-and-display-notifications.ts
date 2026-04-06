@@ -2,6 +2,7 @@ import { getNotifications } from "../home";
 import { applyAvatarsToNotifications, renderEmpty, renderNotifications } from "../rendering/render-github-notifications";
 import { Sorting } from "../sorting/generate-sorting-buttons";
 import { sortIssuesController } from "../sorting/sort-controller";
+import { GitHubAggregated } from "../github-types";
 
 export type Options = {
   ordering: "normal" | "reverse";
@@ -12,14 +13,16 @@ export async function displayNotifications({
   sorting,
   options = { ordering: "normal" },
   skipAnimation = false,
+  preloadedNotifications,
 }: {
   sorting?: Sorting;
   options?: { ordering: string };
   skipAnimation?: boolean;
+  preloadedNotifications?: GitHubAggregated[] | null;
 } = {}) {
-  const notifications = await getNotifications();
+  const notifications = preloadedNotifications ?? (await getNotifications());
   if (notifications === null || notifications.length === 0) {
-    renderEmpty();
+    await renderEmpty();
     return;
   }
   const sortedIssues = sortIssuesController(notifications, sorting, options);

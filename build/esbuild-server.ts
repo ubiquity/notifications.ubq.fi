@@ -8,9 +8,13 @@ import { esBuildContext } from "./esbuild-build";
 });
 export async function server() {
   const _context = await esbuild.context(esBuildContext);
+  // Enable watch mode so builds re-run on file changes during development
+  await _context.watch();
+  const preferredPort = Number(process.env.PORT) || 8080;
+
   const { port } = await _context.serve({
     servedir: "static",
-    port: 8080,
+    port: preferredPort,
     host: "0.0.0.0",
   });
 
@@ -27,4 +31,5 @@ export async function server() {
   }
 
   console.log(`Server is running at http://localhost:${port}`);
+  console.log("Watching for changes...\n");
 }

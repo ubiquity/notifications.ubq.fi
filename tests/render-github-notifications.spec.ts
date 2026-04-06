@@ -1,0 +1,109 @@
+/** @jest-environment jsdom */
+
+type TestGlobals = typeof globalThis & {
+  SUPABASE_URL: string;
+  SUPABASE_ANON_KEY: string;
+  fetch: typeof fetch;
+};
+
+const testGlobals = global as TestGlobals;
+testGlobals.SUPABASE_URL = "test";
+testGlobals.SUPABASE_ANON_KEY = "test";
+document.body.innerHTML = '<div id="issues-container"></div>';
+
+jest.mock("@supabase/supabase-js", () => ({
+  createClient: jest.fn(() => ({})),
+}));
+// Mock home module to avoid importing src/home/home.ts (which pulls auth setup)
+jest.mock("../src/home/home", () => ({
+  get notificationsContainer() {
+    // Resolve the container dynamically to match the current DOM set in beforeEach
+    return document.getElementById("issues-container") as HTMLDivElement;
+  },
+  shouldShowBotNotifications: false,
+}));
+jest.mock("../src/home/rendering/render-preview-modal", () => {
+  const modal = document.createElement("div");
+  modal.id = "preview-modal";
+  modal.innerHTML = '<button class="close-preview"></button><div class="modal-content"></div><div class="modal-toolbar"></div>';
+  return {
+    modal,
+    modalBodyInner: document.createElement("div"),
+    titleAnchor: document.createElement("a"),
+    titleHeader: document.createElement("h2"),
+  };
+});
+jest.mock("../src/home/rendering/render-github-login-button");
+jest.mock("../src/home/getters/get-github-access-token", () => ({
+  getGitHubAccessToken: jest.fn(),
+}));
+
+import { renderNotifications } from "../src/home/rendering/render-github-notifications";
+import { getGitHubAccessToken } from "../src/home/getters/get-github-access-token";
+import { GitHubAggregated } from "../src/home/github-types";
+
+describe("renderNotifications", () => {
+  beforeEach(() => {
+    document.body.innerHTML = '<div id="issues-container"></div>';
+    window.scrollTo = jest.fn();
+    class NoopIntersectionObserver implements IntersectionObserver {
+      readonly root: Element | null = null;
+      readonly rootMargin = "";
+      readonly thresholds: ReadonlyArray<number> = [];
+      disconnect(): void {}
+      observe(): void {}
+      unobserve(): void {}
+      takeRecords(): IntersectionObserverEntry[] {
+        return [];
+      }
+    }
+    globalThis.IntersectionObserver = NoopIntersectionObserver as unknown as typeof IntersectionObserver;
+    const fetchMock = jest.fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>().mockResolvedValue({
+      json: jest.fn().mockResolvedValue({
+        user: { login: "testuser", type: "User", avatar_url: "https://example.com/avatar.png" },
+        html_url: "https://github.com/testuser",
+        body: "Comment body",
+      }),
+    } as unknown as Response);
+    testGlobals.fetch = fetchMock;
+    (getGitHubAccessToken as jest.Mock).mockReturnValue(null);
+  });
+
+  it("appends issue-element-inner with mocked fetch", async () => {
+    const notifications = [
+      {
+        notification: {
+          id: "1",
+          reason: "review_requested",
+          subject: {
+            title: "Test Notification",
+            url: "https://github.com/owner/repo/issues/123",
+            type: "Issue",
+            latest_comment_url: "https://api.github.com/repos/owner/repo/issues/123/comments/456",
+          },
+          repository: { full_name: "owner/repo", url: "https://api.github.com/repos/owner/repo" },
+          updated_at: "2023-01-01T00:00:00Z",
+        },
+        pullRequest: null,
+        issue: {
+          title: "Test Issue",
+          url: "https://api.github.com/repos/owner/repo/issues/123",
+          state: "open",
+          labels: [{ name: "Priority: High" }],
+          assignees: [],
+          created_at: "2023-01-01T00:00:00Z",
+          updated_at: "2023-01-01T00:00:00Z",
+          body: "Issue body",
+          repository_url: "https://api.github.com/repos/owner/repo",
+          html_url: "https://github.com/owner/repo/issues/123",
+          number: 123,
+        },
+        backlinkCount: 0,
+      },
+    ] as unknown as GitHubAggregated[];
+
+    await renderNotifications(notifications, true);
+    const elements = document.querySelectorAll(".issue-element-inner");
+    expect(elements.length).toBe(1);
+  });
+});

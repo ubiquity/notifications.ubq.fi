@@ -1,19 +1,33 @@
-import { Octokit } from "@octokit/rest";
 import { organizationImageCache } from "../fetch-github/fetch-data";
 import { getGitHubAccessToken } from "../getters/get-github-access-token";
-import { GitHubAggregated } from "../github-types";
+import { resolveViewerLogin } from "../getters/get-viewer-login";
+import { GitHubAggregated, GitHubLabel } from "../github-types";
 import { notificationsContainer, shouldShowBotNotifications } from "../home";
+import { markNotificationAsRead } from "../mark-as-read";
 import { getTimeAgo } from "./utils";
 
-export async function renderNotifications(notifications: GitHubAggregated[], skipAnimation: boolean) {
-  const providerToken = await getGitHubAccessToken();
+const DEFAULT_LATEST_COMMENT = "New activity";
 
+function clearContainerPreserveIndicator() {
+  const indicator = notificationsContainer.querySelector(".pull-refresh-indicator");
+  notificationsContainer.classList.remove("ready");
+  Array.from(notificationsContainer.children).forEach((child) => {
+    if (child !== indicator) {
+      child.remove();
+    }
+  });
+}
+
+function hasRenderedNotifications() {
+  return notificationsContainer.querySelector(".issue-element-inner") !== null;
+}
+
+export async function renderNotifications(notifications: GitHubAggregated[], skipAnimation: boolean) {
   if (notificationsContainer.classList.contains("ready")) {
-    notificationsContainer.classList.remove("ready");
-    notificationsContainer.innerHTML = "";
+    clearContainerPreserveIndicator();
   }
   const existingNotificationIds = new Set(
-    Array.from(notificationsContainer.querySelectorAll(".issue-element-inner")).map((element) => element.getAttribute("data-issue-id"))
+    Array.from(notificationsContainer.querySelectorAll(".issue-element-inner")).map((element) => (element as HTMLElement).getAttribute("data-issue-id"))
   );
 
   let delay = 0;
@@ -24,7 +38,7 @@ export async function renderNotifications(notifications: GitHubAggregated[], ski
 
   for (const notification of notifications) {
     if (!existingNotificationIds.has(notification.notification.id.toString())) {
-      const issueWrapper = everyNewNotification({ notification, notificationsContainer, commentsMap, providerToken });
+      const issueWrapper = everyNewNotification({ notification, notificationsContainer, commentsMap });
 
       if (issueWrapper) {
         if (skipAnimation) {
@@ -36,10 +50,11 @@ export async function renderNotifications(notifications: GitHubAggregated[], ski
       }
     }
   }
+
   notificationsContainer.classList.add("ready");
 
   // Check if notificationsContainer has no children and render empty message if true
-  if (notificationsContainer.children.length === 0) {
+  if (!hasRenderedNotifications()) {
     await renderEmpty();
   }
 
@@ -49,8 +64,7 @@ export async function renderNotifications(notifications: GitHubAggregated[], ski
 
 export async function renderEmpty() {
   if (notificationsContainer.classList.contains("ready")) {
-    notificationsContainer.classList.remove("ready");
-    notificationsContainer.innerHTML = "";
+    clearContainerPreserveIndicator();
   }
   const issueWrapper = document.createElement("div");
   const issueElement = document.createElement("div");
@@ -121,12 +135,10 @@ function everyNewNotification({
   notification,
   notificationsContainer,
   commentsMap,
-  providerToken,
 }: {
   notification: GitHubAggregated;
   notificationsContainer: HTMLDivElement;
-  commentsMap: Map<string, { userType: string; url: string; avatarUrl: string; commentBody: string }>;
-  providerToken: string | null;
+  commentsMap: Map<string, { userType: string; url: string; avatarUrl: string; commentBody: string; isSlashCommand: boolean }>;
 }) {
   const issueWrapper = notificationTemplate.cloneNode(true) as HTMLDivElement;
   const issueElement = issueWrapper.querySelector(".issue-element-inner") as HTMLDivElement;
@@ -135,41 +147,52 @@ function everyNewNotification({
   issueElement.classList.add("issue-element-inner");
 
   const labels = parseAndGenerateLabels(notification);
-  const [organizationName, repositoryName] = notification.notification.repository.url.split("/").slice(-2);
+  const repoUrl = notification.notification.repository?.url || notification.issue?.repository_url || notification.pullRequest?.base?.repo?.url || "";
+
+  if (!repoUrl) {
+    console.log("skipping ", notification.notification.subject.title, " because of missing repo url");
+    return;
+  }
+
+  const [organizationName, repositoryName] = repoUrl.split("/").slice(-2);
 
   const commentData = commentsMap.get(notification.notification.id.toString());
 
-  if (!commentData || (commentData.userType === "Bot" && !shouldShowBotNotifications)) {
+  if (!commentData) return;
+  if (commentData.isSlashCommand) {
+    console.log("skipping ", notification.notification.subject.title, " because of slash command comment");
+    return;
+  }
+  if (commentData.userType === "Bot" && !shouldShowBotNotifications) {
     console.log("skipping ", notification.notification.subject.title, " because of bot notification");
     return;
   }
-  if (commentData.commentBody === "") {
-    console.log("skipping ", notification.notification.subject.title, " because of empty comment");
-    return;
-  }
 
-  setUpIssueElement(providerToken, issueElement, notification, organizationName, repositoryName, labels, commentData);
+  setUpIssueElement(issueElement, notification, organizationName, repositoryName, labels, commentData);
   issueWrapper.appendChild(issueElement);
   notificationsContainer.appendChild(issueWrapper);
   return issueWrapper;
 }
 
 function setUpIssueElement(
-  providerToken: string | null,
   issueElement: HTMLDivElement,
   notification: GitHubAggregated,
   organizationName: string,
   repositoryName: string,
   labels: string[],
-  commentData: { userType: string; url: string; avatarUrl: string; commentBody: string }
+  commentData: { userType: string; url: string; avatarUrl: string; commentBody: string; isSlashCommand: boolean }
 ) {
   if (commentData.userType === "Bot" && !shouldShowBotNotifications) {
     console.log("bot notifications are hidden");
     issueElement.style.display = "none";
   }
 
-  const octokit = new Octokit({ auth: providerToken });
   const image = `<img class="orgAvatar"/>`;
+
+  const issueNumber =
+    (notification.issue && typeof notification.issue.number !== "undefined" && String(notification.issue.number)) ||
+    (notification.pullRequest && typeof notification.pullRequest.number !== "undefined" && String(notification.pullRequest.number)) ||
+    (notification.notification.subject.url ? String(notification.notification.subject.url.split("/").slice(-1)) : "");
 
   issueElement.innerHTML = `
     <div class="info">
@@ -183,7 +206,7 @@ function setUpIssueElement(
             <p class="organization-name">${organizationName}</p>
             <p class="repository-name">${repositoryName}</p>
           </div>
-          <p class="issue-number">#${notification.notification.subject.url.split("/").slice(-1)}</p>
+          <p class="issue-number">#${issueNumber}</p>
         </div>
       </div>
     </div>
@@ -216,43 +239,53 @@ function setUpIssueElement(
   }
 
   issueElement.addEventListener("click", async () => {
-    window.open(commentData.url, "_blank");
-    try {
-      // Only mark as read when clicked, don't delete
-      await octokit.request("PATCH /notifications/threads/{thread_id}", {
-        thread_id: Number(notification.notification.id),
-        headers: {
-          "X-GitHub-Api-Version": "2022-11-28",
-        },
-      });
-    } catch (error) {
-      console.error("Failed to mark notification as read:", error);
-    }
+    // Prefer HTML URLs; fall back to API URL only if nothing else exists
+    const htmlUrl = commentData.url.startsWith("http")
+      ? commentData.url.replace("api.github.com/repos/", "github.com/").replace("/pulls/", "/pull/").replace("/issues/", "/issues/")
+      : commentData.url;
+    window.open(htmlUrl, "_blank");
+    void markNotificationAsRead(notification.notification);
   });
 }
 
 async function fetchLatestComments(notifications: GitHubAggregated[]) {
   const providerToken = await getGitHubAccessToken();
-  const commentsMap = new Map<string, { userType: string; url: string; avatarUrl: string; commentBody: string }>();
+  const viewerLogin = await resolveViewerLogin(providerToken);
+  const commentsMap = new Map<string, { userType: string; url: string; avatarUrl: string; commentBody: string; isSlashCommand: boolean }>();
 
   await Promise.all(
     notifications.map(async (notification) => {
       const { subject } = notification.notification;
       let userType = "";
-      let url = "";
+      let url = notification.issue?.html_url || notification.pullRequest?.html_url || subject.url || "#";
       let avatarUrl = "";
-      let commentBody = "";
+      let commentBody = subject.title || DEFAULT_LATEST_COMMENT;
+      let isSlashCommand = false;
+      let authorLogin = "";
 
       if (subject.latest_comment_url) {
         try {
           const response = await fetch(subject.latest_comment_url, {
             headers: { Authorization: `Bearer ${providerToken}` },
           });
-          const data = await response.json();
-          userType = data.user.type;
-          url = data.html_url;
-          avatarUrl = data.user.avatar_url;
-          commentBody = data.body;
+          if (!response.ok) {
+            console.warn("Latest comment fetch failed", subject.latest_comment_url, response.status);
+          } else {
+            const data: { user?: { type?: string; avatar_url?: string; login?: string }; html_url?: string; body?: string } = await response.json();
+            userType = data.user?.type || "";
+            url = data.html_url || url;
+            avatarUrl = data.user?.avatar_url || avatarUrl;
+            authorLogin = (data.user?.login || "").toLowerCase();
+            const rawBody = data.body || "";
+            isSlashCommand = rawBody.trim().startsWith("/");
+            commentBody = rawBody || commentBody;
+          }
+
+          const isOwnComment = Boolean(viewerLogin && authorLogin && viewerLogin === authorLogin);
+          if (isOwnComment) {
+            console.log("skipping ", subject.title, " because latest comment is by current user");
+            return;
+          }
 
           // Check if commentBody contains HTML
           const parser = new DOMParser();
@@ -265,11 +298,7 @@ async function fetchLatestComments(notifications: GitHubAggregated[]) {
         }
       }
 
-      if (!url) {
-        url = notification.issue?.html_url || notification.pullRequest?.html_url || "#";
-      }
-
-      commentsMap.set(notification.notification.id.toString(), { userType, url, avatarUrl, commentBody });
+      commentsMap.set(notification.notification.id.toString(), { userType, url, avatarUrl, commentBody, isSlashCommand });
     })
   );
 
@@ -279,15 +308,15 @@ async function fetchLatestComments(notifications: GitHubAggregated[]) {
 function parseAndGenerateLabels(notification: GitHubAggregated) {
   const labels: string[] = [];
 
-  if (notification.issue.labels) {
-    notification.issue.labels.forEach((label) => {
-      if (typeof label === "string") return;
-      if (!label.name) return;
-
-      const match = label.name.match(/^(Priority): /);
+  const labelSource = notification.issue?.labels || notification.pullRequest?.labels;
+  if (labelSource) {
+    labelSource.forEach((label: GitHubLabel | string) => {
+      const name = typeof label === "string" ? label : label?.name;
+      if (!name) return;
+      const match = name.match(/priority\s*:\s*(.+)/i);
       if (match) {
-        const name = label.name.replace(match[0], "");
-        labels.push(`<label class="priority">${name}</label>`);
+        const value = match[1].trim();
+        labels.push(`<label class="priority">${value}</label>`);
       }
     });
   }

@@ -11287,4 +11287,4 @@ export const testAllNotifications = [
     },
     backlinkCount: 0,
   },
-] as GitHubAggregated[];
+] as unknown as GitHubAggregated[];
