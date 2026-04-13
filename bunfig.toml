@@ -1,0 +1,5 @@
+[test]
+preload = ["./tests/happy-dom-setup.ts", "./tests/setup-env.ts"]
+coverage = true
+coverage-reporter = ["json", "lcov", "text"]
+coverage-dir = "coverage"

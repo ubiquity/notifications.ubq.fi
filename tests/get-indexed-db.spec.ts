@@ -1,3 +1,4 @@
+import { describe, it, expect, beforeEach, mock } from "bun:test";
 import "fake-indexeddb/auto";
 import {
   saveNotificationsToCache,
@@ -54,7 +55,7 @@ describe("IndexedDB cache functions", () => {
 
     // Mock time to make item expired (TTL is 5 minutes)
     const realNow = Date.now;
-    Date.now = jest.fn(() => realNow() + 10 * 60 * 1000); // 10 minutes later
+    Date.now = mock(() => realNow() + 10 * 60 * 1000); // 10 minutes later
 
     const result = await getNotificationsFromCache();
     expect(result.length).toBe(0);
