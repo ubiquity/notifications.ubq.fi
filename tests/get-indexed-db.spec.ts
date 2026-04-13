@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, mock } from "bun:test";
+import { describe, it, expect, beforeEach, setSystemTime } from "bun:test";
 import "fake-indexeddb/auto";
 import {
   saveNotificationsToCache,
@@ -53,14 +53,15 @@ describe("IndexedDB cache functions", () => {
     ] as unknown as GitHubNotifications;
     await saveNotificationsToCache(fetched);
 
-    // Mock time to make item expired (TTL is 5 minutes)
-    const realNow = Date.now;
-    Date.now = mock(() => realNow() + 10 * 60 * 1000); // 10 minutes later
-
-    const result = await getNotificationsFromCache();
-    expect(result.length).toBe(0);
-
-    Date.now = realNow;
+    // Advance time to make item expired (TTL is 5 minutes)
+    const now = Date.now();
+    setSystemTime(new Date(now + 10 * 60 * 1000));
+    try {
+      const result = await getNotificationsFromCache();
+      expect(result.length).toBe(0);
+    } finally {
+      setSystemTime();
+    }
   });
 
   it("overwrites cache on save", async () => {

@@ -1,10 +1,18 @@
 import { describe, it, expect, mock } from "bun:test";
 import type { GitHubAggregated } from "../src/home/github-types";
 
+function getContainerOrThrow(): HTMLDivElement {
+  const el = document.getElementById("issues-container");
+  if (!(el instanceof HTMLDivElement)) {
+    throw new Error("Missing `#issues-container` test fixture");
+  }
+  return el;
+}
+
 // Break the circular dependency chain by mocking the upstream module
 // home.ts -> generate-sorting-buttons -> sorting-manager -> home.ts
 mock.module("../src/home/home", () => ({
-  notificationsContainer: document.getElementById("issues-container") as HTMLDivElement,
+  notificationsContainer: getContainerOrThrow(),
   shouldShowBotNotifications: false,
 }));
 
@@ -25,7 +33,7 @@ const { renderNotifications } = await import("../src/home/rendering/render-githu
 
 describe("renderNotifications", () => {
   it("appends notification elements to the container", async () => {
-    const container = document.getElementById("issues-container") as HTMLDivElement;
+    const container = getContainerOrThrow();
     container.innerHTML = "";
 
     const notification = {
@@ -61,7 +69,7 @@ describe("renderNotifications", () => {
   });
 
   it("does not duplicate already-rendered notifications", async () => {
-    const container = document.getElementById("issues-container") as HTMLDivElement;
+    const container = getContainerOrThrow();
     container.innerHTML = "";
 
     const notification = {
@@ -96,7 +104,7 @@ describe("renderNotifications", () => {
   });
 
   it("renders empty state when no notifications provided", async () => {
-    const container = document.getElementById("issues-container") as HTMLDivElement;
+    const container = getContainerOrThrow();
     container.innerHTML = "";
 
     await renderNotifications([], true);
