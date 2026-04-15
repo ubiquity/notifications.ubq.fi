@@ -1,4 +1,4 @@
-/** @jest-environment jsdom */
+import { describe, it, expect, mock } from "bun:test";
 
 type TestGlobals = typeof globalThis & {
   SUPABASE_URL: string;
@@ -9,14 +9,14 @@ const testGlobals = global as TestGlobals;
 testGlobals.SUPABASE_URL = "test";
 testGlobals.SUPABASE_ANON_KEY = "test";
 
-jest.mock("@supabase/supabase-js", () => ({
-  createClient: jest.fn(() => ({})),
+mock.module("@supabase/supabase-js", () => ({
+  createClient: mock(() => ({})),
 }));
-jest.mock("../src/home/rendering/render-preview-modal");
-jest.mock("../src/home/ready-toolbar");
-jest.mock("../src/home/rendering/render-github-login-button");
-jest.mock("../src/home/getters/get-github-access-token", () => ({
-  getGitHubAccessToken: jest.fn(),
+mock.module("../src/home/rendering/render-preview-modal", () => ({}));
+mock.module("../src/home/ready-toolbar", () => ({}));
+mock.module("../src/home/rendering/render-github-login-button", () => ({}));
+mock.module("../src/home/getters/get-github-access-token", () => ({
+  getGitHubAccessToken: mock(),
 }));
 
 import { processNotifications, getPullRequestNotifications, getIssueNotifications } from "../src/home/fetch-github/fetch-data";

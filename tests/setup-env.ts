@@ -21,6 +21,8 @@ if (typeof document !== "undefined") {
     <div id="bottom-bar"></div>
     <div id="issues-container"></div>
     <div id="notifications"></div>
+    <div id="filters"></div>
+    <div id="filters-bottom"></div>
   `;
 }
 
@@ -66,11 +68,6 @@ class MockDOMParser implements DOMParser {
   }
 }
 globalThis.DOMParser = MockDOMParser;
-
-// fetch mock using jest.fn to simulate fetch/json responses
-export const fetchMock = jest.fn(() => Promise.resolve({ json: async () => ({}) })) as unknown as jest.MockedFunction<typeof fetch>;
-globalThis.fetch = fetchMock as unknown as typeof fetch;
-afterEach(() => fetchMock.mockReset());
 
 // URL.createObjectURL mock
 globalThis.URL.createObjectURL = (() => "blob://mock") as typeof URL.createObjectURL;

@@ -1,109 +1,117 @@
-/** @jest-environment jsdom */
+import { describe, it, expect, mock } from "bun:test";
+import type { GitHubAggregated } from "../src/home/github-types";
 
-type TestGlobals = typeof globalThis & {
-  SUPABASE_URL: string;
-  SUPABASE_ANON_KEY: string;
-  fetch: typeof fetch;
-};
+function getContainerOrThrow(): HTMLDivElement {
+  const el = document.getElementById("issues-container");
+  if (!(el instanceof HTMLDivElement)) {
+    throw new Error("Missing `#issues-container` test fixture");
+  }
+  return el;
+}
 
-const testGlobals = global as TestGlobals;
-testGlobals.SUPABASE_URL = "test";
-testGlobals.SUPABASE_ANON_KEY = "test";
-document.body.innerHTML = '<div id="issues-container"></div>';
-
-jest.mock("@supabase/supabase-js", () => ({
-  createClient: jest.fn(() => ({})),
-}));
-// Mock home module to avoid importing src/home/home.ts (which pulls auth setup)
-jest.mock("../src/home/home", () => ({
-  get notificationsContainer() {
-    // Resolve the container dynamically to match the current DOM set in beforeEach
-    return document.getElementById("issues-container") as HTMLDivElement;
-  },
+// Break the circular dependency chain by mocking the upstream module
+// home.ts -> generate-sorting-buttons -> sorting-manager -> home.ts
+mock.module("../src/home/home", () => ({
+  notificationsContainer: getContainerOrThrow(),
   shouldShowBotNotifications: false,
 }));
-jest.mock("../src/home/rendering/render-preview-modal", () => {
-  const modal = document.createElement("div");
-  modal.id = "preview-modal";
-  modal.innerHTML = '<button class="close-preview"></button><div class="modal-content"></div><div class="modal-toolbar"></div>';
-  return {
-    modal,
-    modalBodyInner: document.createElement("div"),
-    titleAnchor: document.createElement("a"),
-    titleHeader: document.createElement("h2"),
-  };
-});
-jest.mock("../src/home/rendering/render-github-login-button");
-jest.mock("../src/home/getters/get-github-access-token", () => ({
-  getGitHubAccessToken: jest.fn(),
+
+// Mock transitive dependencies that pull in heavy modules or hit the network
+mock.module("../src/home/getters/get-github-access-token", () => ({
+  getGitHubAccessToken: mock().mockResolvedValue("test-token"),
+  clearStoredSession: mock(),
+  getGitHubUserName: mock().mockReturnValue("testuser"),
+}));
+mock.module("../src/home/getters/get-viewer-login", () => ({
+  resolveViewerLogin: mock().mockResolvedValue("testuser"),
+}));
+mock.module("../src/home/mark-as-read", () => ({
+  markNotificationAsRead: mock().mockResolvedValue(undefined),
 }));
 
-import { renderNotifications } from "../src/home/rendering/render-github-notifications";
-import { getGitHubAccessToken } from "../src/home/getters/get-github-access-token";
-import { GitHubAggregated } from "../src/home/github-types";
+const { renderNotifications } = await import("../src/home/rendering/render-github-notifications");
 
 describe("renderNotifications", () => {
-  beforeEach(() => {
-    document.body.innerHTML = '<div id="issues-container"></div>';
-    window.scrollTo = jest.fn();
-    class NoopIntersectionObserver implements IntersectionObserver {
-      readonly root: Element | null = null;
-      readonly rootMargin = "";
-      readonly thresholds: ReadonlyArray<number> = [];
-      disconnect(): void {}
-      observe(): void {}
-      unobserve(): void {}
-      takeRecords(): IntersectionObserverEntry[] {
-        return [];
-      }
-    }
-    globalThis.IntersectionObserver = NoopIntersectionObserver as unknown as typeof IntersectionObserver;
-    const fetchMock = jest.fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>().mockResolvedValue({
-      json: jest.fn().mockResolvedValue({
-        user: { login: "testuser", type: "User", avatar_url: "https://example.com/avatar.png" },
-        html_url: "https://github.com/testuser",
-        body: "Comment body",
-      }),
-    } as unknown as Response);
-    testGlobals.fetch = fetchMock;
-    (getGitHubAccessToken as jest.Mock).mockReturnValue(null);
+  it("appends notification elements to the container", async () => {
+    const container = getContainerOrThrow();
+    container.innerHTML = "";
+
+    const notification = {
+      notification: {
+        id: "100",
+        reason: "assign",
+        subject: {
+          title: "Test Issue",
+          url: "https://api.github.com/repos/owner/repo/issues/1",
+          type: "Issue",
+          latest_comment_url: null,
+        },
+        repository: { url: "https://api.github.com/repos/owner/repo" },
+        updated_at: new Date().toISOString(),
+      },
+      issue: {
+        url: "https://api.github.com/repos/owner/repo/issues/1",
+        html_url: "https://github.com/owner/repo/issues/1",
+        number: 1,
+        state: "open",
+        labels: [{ name: "Priority: High" }],
+      },
+      pullRequest: null,
+      backlinkCount: 0,
+    };
+
+    await renderNotifications([notification as unknown as GitHubAggregated], true);
+
+    const inner = container.querySelector(".issue-element-inner");
+    expect(inner).not.toBeNull();
+    expect(inner?.getAttribute("data-issue-id")).toBe("100");
+    expect(container.classList.contains("ready")).toBe(true);
   });
 
-  it("appends issue-element-inner with mocked fetch", async () => {
-    const notifications = [
-      {
-        notification: {
-          id: "1",
-          reason: "review_requested",
-          subject: {
-            title: "Test Notification",
-            url: "https://github.com/owner/repo/issues/123",
-            type: "Issue",
-            latest_comment_url: "https://api.github.com/repos/owner/repo/issues/123/comments/456",
-          },
-          repository: { full_name: "owner/repo", url: "https://api.github.com/repos/owner/repo" },
-          updated_at: "2023-01-01T00:00:00Z",
-        },
-        pullRequest: null,
-        issue: {
-          title: "Test Issue",
-          url: "https://api.github.com/repos/owner/repo/issues/123",
-          state: "open",
-          labels: [{ name: "Priority: High" }],
-          assignees: [],
-          created_at: "2023-01-01T00:00:00Z",
-          updated_at: "2023-01-01T00:00:00Z",
-          body: "Issue body",
-          repository_url: "https://api.github.com/repos/owner/repo",
-          html_url: "https://github.com/owner/repo/issues/123",
-          number: 123,
-        },
-        backlinkCount: 0,
-      },
-    ] as unknown as GitHubAggregated[];
+  it("does not duplicate already-rendered notifications", async () => {
+    const container = getContainerOrThrow();
+    container.innerHTML = "";
 
-    await renderNotifications(notifications, true);
-    const elements = document.querySelectorAll(".issue-element-inner");
-    expect(elements.length).toBe(1);
+    const notification = {
+      notification: {
+        id: "200",
+        reason: "comment",
+        subject: {
+          title: "Duplicate Test",
+          url: "https://api.github.com/repos/owner/repo/issues/2",
+          type: "Issue",
+          latest_comment_url: null,
+        },
+        repository: { url: "https://api.github.com/repos/owner/repo" },
+        updated_at: new Date().toISOString(),
+      },
+      issue: {
+        url: "https://api.github.com/repos/owner/repo/issues/2",
+        html_url: "https://github.com/owner/repo/issues/2",
+        number: 2,
+        state: "open",
+        labels: [],
+      },
+      pullRequest: null,
+      backlinkCount: 0,
+    };
+
+    await renderNotifications([notification as unknown as GitHubAggregated], true);
+    await renderNotifications([notification as unknown as GitHubAggregated], true);
+
+    const matches = container.querySelectorAll('[data-issue-id="200"]');
+    expect(matches.length).toBe(1);
+  });
+
+  it("renders empty state when no notifications provided", async () => {
+    const container = getContainerOrThrow();
+    container.innerHTML = "";
+
+    await renderNotifications([], true);
+
+    expect(container.classList.contains("ready")).toBe(true);
+    // renderEmpty should have been called, creating the empty message element
+    const emptyEl = container.querySelector(".issue-element-inner");
+    expect(emptyEl).not.toBeNull();
   });
 });

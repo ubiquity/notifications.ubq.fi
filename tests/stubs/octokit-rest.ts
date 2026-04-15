@@ -1,3 +1,5 @@
+import { mock } from "bun:test";
+
 export class Octokit {
-  request = jest.fn().mockResolvedValue({ data: [] });
+  request = mock().mockResolvedValue({ data: [] });
 }
