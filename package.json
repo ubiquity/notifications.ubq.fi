@@ -7,7 +7,7 @@
   "author": "Ubiquity DAO",
   "license": "MIT",
   "engines": {
-    "bun": ">=1.0.0"
+    "bun": ">=1.2.17"
   },
   "scripts": {
     "dev": "bun run build/esbuild-server.ts",
