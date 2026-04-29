@@ -1,5 +1,5 @@
 import esbuild from "esbuild";
-import { esBuildContext } from "./esbuild-build";
+import { esBuildContext } from "./esbuild-build.ts";
 (async () => {
   await server();
 })().catch((error) => {

@@ -1,13 +1,21 @@
-import { execSync } from "child_process";
+import { execSync } from "node:child_process";
 import { config } from "dotenv";
 import esbuild from "esbuild";
-import { invertColors } from "./plugins/invert-colors";
-import { pwaManifest } from "./plugins/pwa-manifest";
+import { invertColors } from "./plugins/invert-colors.ts";
+import { pwaManifest } from "./plugins/pwa-manifest.ts";
 config();
 
 const typescriptEntries = ["src/home/home.ts"];
 const cssEntries = ["static/style/style.css"];
-const entries = [...typescriptEntries, ...cssEntries, "static/manifest.json", "static/favicon-32.png", "static/favicon.png", "static/icon-192x192.png", "static/icon-512x512.png"];
+const entries = [
+  ...typescriptEntries,
+  ...cssEntries,
+  "static/manifest.json",
+  "static/favicon-32.png",
+  "static/favicon.png",
+  "static/icon-192x192.png",
+  "static/icon-512x512.png",
+];
 
 export const esBuildContext: esbuild.BuildOptions = {
   plugins: [invertColors, pwaManifest],
@@ -27,7 +35,7 @@ export const esBuildContext: esbuild.BuildOptions = {
   outdir: "static/dist",
   define: createEnvDefines(["SUPABASE_URL", "SUPABASE_ANON_KEY", "AUTH_TOKEN_KEY", "AUTH_PROVIDER_TOKEN", "AUTH_ACCESS_TOKEN", "AUTH_REFRESH_TOKEN"], {
     SUPABASE_STORAGE_KEY: generateSupabaseStorageKey(),
-    GIT_REVISION: execSync(`git rev-parse --short HEAD`).toString().trim(),
+    GIT_REVISION: getGitRevision(),
     NODE_ENV: process.env.NODE_ENV || "development",
   }),
 };
@@ -81,4 +89,12 @@ export function generateSupabaseStorageKey(): string | null {
   }
 
   return domain.substring(lastSlashIndex + 1);
+}
+
+function getGitRevision(): string {
+  try {
+    return execSync(`git rev-parse --short HEAD`).toString().trim();
+  } catch {
+    return process.env.GITHUB_SHA?.slice(0, 7) || "unknown";
+  }
 }

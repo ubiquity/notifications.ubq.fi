@@ -18,16 +18,16 @@ jobs:
         # with:
         # submodules: "recursive" # Ensures submodules are checked out
 
-      - name: Set up Bun
-        uses: oven-sh/setup-bun@v2
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
         with:
-          bun-version-file: ".bun-version"
+          deno-version: v2.x
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: deno install
 
       - name: Build
-        run: bun run build
+        run: deno task build
         env: # Set environment variables for the build
           SUPABASE_URL: "https://wfzpewmlyiozupulbuur.supabase.co"
           SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndmenBld21seWlvenVwdWxidXVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE2OTU2NzQzMzksImV4cCI6MjAxMTI1MDMzOX0.SKIL3Q0NOBaMehH0ekFspwgcu3afp3Dl9EDzPqs1nKs"
