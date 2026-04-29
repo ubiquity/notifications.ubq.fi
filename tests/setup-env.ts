@@ -1,3 +1,11 @@
+Object.assign(globalThis, {
+  GIT_REVISION: "test",
+  NODE_ENV: "test",
+  SUPABASE_ANON_KEY: "test",
+  SUPABASE_STORAGE_KEY: "local",
+  SUPABASE_URL: "test",
+});
+
 // Only set DOM if available (happy-dom preload provides document/window)
 if (typeof document !== "undefined") {
   document.body.innerHTML = `

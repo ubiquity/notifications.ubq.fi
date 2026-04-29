@@ -1,6 +1,6 @@
 import esbuild from "esbuild";
-import fs from "fs";
-import path from "path";
+import fs from "node:fs";
+import path from "node:path";
 
 export const invertColors: esbuild.Plugin = {
   name: "invert-colors",

@@ -160,6 +160,14 @@ describe("fetch-data helpers", () => {
   });
 
   it("fetchAllNotifications saves to cache when data returns", async () => {
+    localStorage.setItem(
+      "sb-local-auth-token",
+      JSON.stringify({
+        expires_at: Math.floor(Date.now() / 1000) + 60,
+        provider_token: "token",
+      })
+    );
+
     // Mock fetch for pulls and issues
     const issue: Partial<GitHubIssue> = {
       url: "https://api.github.com/repos/owner/repo/issues/1",
