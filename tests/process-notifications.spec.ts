@@ -12,9 +12,9 @@ testGlobals.SUPABASE_ANON_KEY = "test";
 jest.mock("@supabase/supabase-js", () => ({
   createClient: jest.fn(() => ({})),
 }));
-jest.mock("../src/home/rendering/render-preview-modal");
-jest.mock("../src/home/ready-toolbar");
-jest.mock("../src/home/rendering/render-github-login-button");
+jest.mock("../src/home/rendering/render-preview-modal", () => ({}));
+jest.mock("../src/home/ready-toolbar", () => ({}));
+jest.mock("../src/home/rendering/render-github-login-button", () => ({}));
 jest.mock("../src/home/getters/get-github-access-token", () => ({
   getGitHubAccessToken: jest.fn(),
 }));

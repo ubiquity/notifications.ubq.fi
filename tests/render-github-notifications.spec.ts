@@ -1,5 +1,3 @@
-/** @jest-environment jsdom */
-
 type TestGlobals = typeof globalThis & {
   SUPABASE_URL: string;
   SUPABASE_ANON_KEY: string;
@@ -38,13 +36,26 @@ jest.mock("../src/home/getters/get-github-access-token", () => ({
   getGitHubAccessToken: jest.fn(),
 }));
 
-import { renderNotifications } from "../src/home/rendering/render-github-notifications";
-import { getGitHubAccessToken } from "../src/home/getters/get-github-access-token";
-import { GitHubAggregated } from "../src/home/github-types";
+import { beforeAll, beforeEach, describe, expect, it } from "bun:test";
+import type { GitHubAggregated } from "../src/home/github-types";
+
+let renderNotifications: typeof import("../src/home/rendering/render-github-notifications").renderNotifications;
+let getGitHubAccessToken: typeof import("../src/home/getters/get-github-access-token").getGitHubAccessToken;
+
+beforeAll(async () => {
+  ({ renderNotifications } = await import("../src/home/rendering/render-github-notifications"));
+  ({ getGitHubAccessToken } = await import("../src/home/getters/get-github-access-token"));
+});
 
 describe("renderNotifications", () => {
   beforeEach(() => {
-    document.body.innerHTML = '<div id="issues-container"></div>';
+    const notificationsContainer = document.getElementById("issues-container") ?? document.createElement("div");
+    notificationsContainer.id = "issues-container";
+    notificationsContainer.innerHTML = "";
+    notificationsContainer.className = "";
+    if (!notificationsContainer.isConnected) {
+      document.body.appendChild(notificationsContainer);
+    }
     window.scrollTo = jest.fn();
     class NoopIntersectionObserver implements IntersectionObserver {
       readonly root: Element | null = null;
@@ -59,6 +70,8 @@ describe("renderNotifications", () => {
     }
     globalThis.IntersectionObserver = NoopIntersectionObserver as unknown as typeof IntersectionObserver;
     const fetchMock = jest.fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>().mockResolvedValue({
+      ok: true,
+      status: 200,
       json: jest.fn().mockResolvedValue({
         user: { login: "testuser", type: "User", avatar_url: "https://example.com/avatar.png" },
         html_url: "https://github.com/testuser",

@@ -10,8 +10,17 @@ Ensure that `SUPABASE_URL` and `SUPABASE_ANON_KEY` are set. This is for GitHub u
 
 ```sh
 bun install
-bun run start
+bun run dev
 open http://localhost:8080
+```
+
+## Bun Commands
+
+```sh
+bun ci
+bun run dev
+bun test
+bun run build
 ```
 
 ### Automatic Light Mode

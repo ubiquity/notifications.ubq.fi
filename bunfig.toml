@@ -1,0 +1,8 @@
+[test]
+preload = ["./tests/happydom-setup.ts", "./tests/setup-env.ts"]
+coverage = true
+coverageReporter = ["text", "lcov"]
+coverageDir = "coverage"
+
+[test.reporter]
+junit = "junit.xml"

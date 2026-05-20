@@ -27,6 +27,10 @@ if (typeof document !== "undefined") {
     <h1 id="preview-title"></h1>
     <div id="preview-body-inner"></div>
     <div id="bottom-bar"></div>
+    <div id="filters"></div>
+    <div id="filters-bottom"></div>
+    <div id="grid"></div>
+    <div id="git-revision"></div>
     <div id="issues-container"></div>
     <div id="notifications"></div>
   `;

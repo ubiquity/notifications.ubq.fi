@@ -11,8 +11,8 @@ jobs:
       project: notifications-ubq-fi
       deploy_platform: deno2
       entrypoint: serve.ts
-      install_command: deno install
-      build_command: deno task build
+      install_command: bun install --frozen-lockfile
+      build_command: bun run build
       build_env: |
         SUPABASE_URL=$SUPABASE_URL
         SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY
