@@ -14,6 +14,17 @@ bun run start
 open http://localhost:8080
 ```
 
+## Common Commands
+
+```sh
+bun run build
+bun test
+bun run typecheck
+bun run format
+```
+
+Tests run with `bun:test`, use Happy DOM from `tests/happydom-setup.ts`, and write coverage plus `junit.xml` through `bunfig.toml`.
+
 ### Automatic Light Mode
 
 - There is a plugin (`build/plugins/invert-colors.ts`) that inverts the greyscale shades in `style.css` and outputs `inverted-style.css`.

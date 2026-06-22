@@ -1,4 +1,4 @@
-/** @jest-environment jsdom */
+import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from "bun:test";
 
 type TestGlobals = typeof globalThis & {
   SUPABASE_URL: string;
@@ -6,67 +6,58 @@ type TestGlobals = typeof globalThis & {
   fetch: typeof fetch;
 };
 
-// Minimal SUPABASE env + client mock to satisfy transitive imports
-const testGlobals = global as TestGlobals;
+const testGlobals = globalThis as TestGlobals;
 testGlobals.SUPABASE_URL = "test";
 testGlobals.SUPABASE_ANON_KEY = "test";
-jest.mock("@supabase/supabase-js", () => ({
-  createClient: jest.fn(() => ({})),
-}));
-
-// Local stubs (jest config mappers do not run under bun test)
-jest.mock("@octokit/rest", () => ({
-  Octokit: class {
-    request = jest.fn().mockResolvedValue({ data: [] });
-  },
-}));
-jest.mock("@octokit/request-error", () => {
-  return {
-    RequestError: class RequestError extends Error {
-      status?: number;
-    },
-  };
-});
 
 import * as indexedDb from "../src/home/getters/get-indexed-db";
-import { fetchIssues, fetchPullRequests, fetchAllNotifications, processNotifications, getIssueNotifications } from "../src/home/fetch-github/fetch-data";
-import { GitHubIssue, GitHubLabel, GitHubNotification, GitHubNotifications, GitHubPullRequest } from "../src/home/github-types";
+import type { GitHubIssue, GitHubLabel, GitHubNotification, GitHubNotifications, GitHubPullRequest } from "../src/home/github-types";
 
-let saveNotificationsToCacheSpy: jest.SpiedFunction<typeof indexedDb.saveNotificationsToCache>;
-let saveAggregatedNotificationsToCacheSpy: jest.SpiedFunction<typeof indexedDb.saveAggregatedNotificationsToCache>;
+void mock.module("../src/home/getters/get-github-access-token", () => ({
+  clearStoredSession: mock(() => {}),
+  getGitHubAccessToken: mock(() => Promise.resolve("token")),
+  getGitHubUserName: mock(() => null),
+}));
+void mock.module("../src/home/getters/get-viewer-login", () => ({
+  resolveViewerLogin: mock(() => Promise.resolve(null)),
+}));
+
+const { fetchIssues, fetchPullRequests, fetchAllNotifications, processNotifications, getIssueNotifications } = await import(
+  "../src/home/fetch-github/fetch-data"
+);
+
+let saveNotificationsToCacheSpy: ReturnType<typeof spyOn>;
+let saveAggregatedNotificationsToCacheSpy: ReturnType<typeof spyOn>;
 
 describe("fetch-data helpers", () => {
   const realFetch = testGlobals.fetch;
 
   beforeEach(() => {
-    saveNotificationsToCacheSpy = jest.spyOn(indexedDb, "saveNotificationsToCache").mockResolvedValue(undefined);
-    saveAggregatedNotificationsToCacheSpy = jest.spyOn(indexedDb, "saveAggregatedNotificationsToCache").mockResolvedValue(undefined);
+    saveNotificationsToCacheSpy = spyOn(indexedDb, "saveNotificationsToCache").mockResolvedValue(undefined);
+    saveAggregatedNotificationsToCacheSpy = spyOn(indexedDb, "saveAggregatedNotificationsToCache").mockResolvedValue(undefined);
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    saveNotificationsToCacheSpy.mockRestore();
+    saveAggregatedNotificationsToCacheSpy.mockRestore();
     testGlobals.fetch = realFetch;
   });
 
-  it("fetchIssues returns [] on non-ok response", async () => {
-    testGlobals.fetch = jest
-      .fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>()
-      .mockResolvedValue({ ok: false, status: 500, statusText: "Internal Error" } as Response);
+  test("fetchIssues returns [] on non-ok response", async () => {
+    testGlobals.fetch = mock(() => Promise.resolve({ ok: false, status: 500, statusText: "Internal Error" } as Response)) as unknown as typeof fetch;
     const issues = await fetchIssues();
     expect(issues).toEqual([]);
   });
 
-  it("fetchPullRequests returns parsed JSON on ok", async () => {
+  test("fetchPullRequests returns parsed JSON on ok", async () => {
     const pr: Partial<GitHubPullRequest> = { url: "https://api.github.com/repos/owner/repo/pulls/1", state: "open", draft: false, body: "" };
-    testGlobals.fetch = jest
-      .fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>()
-      .mockResolvedValue({ ok: true, json: jest.fn().mockResolvedValue([pr]) } as unknown as Response);
+    testGlobals.fetch = mock(() => Promise.resolve({ ok: true, json: mock(() => Promise.resolve([pr])) } as unknown as Response)) as unknown as typeof fetch;
     const pulls = await fetchPullRequests();
     expect(pulls.length).toBe(1);
     expect(pulls[0].url).toBe(pr.url);
   });
 
-  it("pre-filter excludes disallowed reasons and repos", async () => {
+  test("pre-filter excludes disallowed reasons and repos", async () => {
     const devpoolRepos = new Set(["owner/repo"]);
     const notifications: GitHubNotifications = [
       {
@@ -93,7 +84,7 @@ describe("fetch-data helpers", () => {
     expect(result?.[0]?.notification.id).toBe("n1");
   });
 
-  it("processNotifications filters by Priority label and counts backlinks for issues", async () => {
+  test("processNotifications filters by Priority label and counts backlinks for issues", async () => {
     const notifications: GitHubNotifications = [
       {
         id: "n3",
@@ -159,7 +150,7 @@ describe("fetch-data helpers", () => {
     expect(agg.backlinkCount).toBeGreaterThanOrEqual(2);
   });
 
-  it("fetchAllNotifications saves to cache when data returns", async () => {
+  test("fetchAllNotifications saves to cache when data returns", async () => {
     localStorage.setItem(
       "sb-local-auth-token",
       JSON.stringify({
@@ -168,17 +159,17 @@ describe("fetch-data helpers", () => {
       })
     );
 
-    // Mock fetch for pulls and issues
     const issue: Partial<GitHubIssue> = {
       url: "https://api.github.com/repos/owner/repo/issues/1",
       state: "open",
       repository_url: "https://api.github.com/repos/owner/repo",
       labels: [{ name: "Priority: High" } as GitHubLabel],
     };
-    testGlobals.fetch = jest
-      .fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>()
-      .mockResolvedValueOnce({ ok: true, json: jest.fn().mockResolvedValue([]) } as unknown as Response) // pulls
-      .mockResolvedValueOnce({ ok: true, json: jest.fn().mockResolvedValue([issue]) } as unknown as Response); // issues
+    const fetchSequence = mock();
+    fetchSequence
+      .mockResolvedValueOnce({ ok: true, json: mock(() => Promise.resolve([])) } as unknown as Response) // pulls
+      .mockResolvedValueOnce({ ok: true, json: mock(() => Promise.resolve([issue])) } as unknown as Response); // issues
+    testGlobals.fetch = fetchSequence as unknown as typeof fetch;
 
     const result = await fetchAllNotifications();
     expect(saveNotificationsToCacheSpy).toHaveBeenCalled();

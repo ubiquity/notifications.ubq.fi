@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "noEmit": true
+  },
+  "exclude": [
+    "serve.ts",
+    "test/**",
+    "tests/**",
+    "src/home/fetch-github/test-all-notifications.ts"
+  ]
+}

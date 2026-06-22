@@ -1,29 +1,47 @@
-/** @jest-environment jsdom */
+import { describe, expect, mock, test } from "bun:test";
+
+void mock.module("../src/home/rendering/render-preview-modal", () => ({
+  modal: document.createElement("div"),
+  modalBodyInner: document.createElement("div"),
+  titleAnchor: document.createElement("a"),
+  titleHeader: document.createElement("h2"),
+}));
+void mock.module("../src/home/ready-toolbar", () => ({
+  toolbar: { scrollTo: mock() },
+}));
+void mock.module("../src/home/rendering/render-github-login-button", () => ({
+  authenticationElement: document.getElementById("authentication"),
+  checkSupabaseSession: mock(() => Promise.resolve(null)),
+  getSupabase: mock(() => null),
+  gitHubLoginButton: document.createElement("button"),
+  renderAugmentAccessButton: mock(() => null),
+  renderGitHubLoginButton: mock(() => {}),
+  renderGitRevision: mock(() => {}),
+}));
+void mock.module("../src/home/getters/get-github-access-token", () => ({
+  getGitHubAccessToken: mock(() => null),
+  clearStoredSession: mock(() => {}),
+  getGitHubUserName: mock(() => null),
+}));
+void mock.module("../src/home/getters/get-viewer-login", () => ({
+  resolveViewerLogin: mock(() => Promise.resolve(null)),
+}));
 
 type TestGlobals = typeof globalThis & {
   SUPABASE_URL: string;
   SUPABASE_ANON_KEY: string;
 };
 
-const testGlobals = global as TestGlobals;
+const testGlobals = globalThis as TestGlobals;
 testGlobals.SUPABASE_URL = "test";
 testGlobals.SUPABASE_ANON_KEY = "test";
 
-jest.mock("@supabase/supabase-js", () => ({
-  createClient: jest.fn(() => ({})),
-}));
-jest.mock("../src/home/rendering/render-preview-modal");
-jest.mock("../src/home/ready-toolbar");
-jest.mock("../src/home/rendering/render-github-login-button");
-jest.mock("../src/home/getters/get-github-access-token", () => ({
-  getGitHubAccessToken: jest.fn(),
-}));
+import type { GitHubIssue, GitHubNotifications, GitHubPullRequest } from "../src/home/github-types";
 
-import { processNotifications, getPullRequestNotifications, getIssueNotifications } from "../src/home/fetch-github/fetch-data";
-import { GitHubIssue, GitHubNotifications, GitHubPullRequest } from "../src/home/github-types";
+const { processNotifications, getPullRequestNotifications, getIssueNotifications } = await import("../src/home/fetch-github/fetch-data");
 
 describe("processNotifications", () => {
-  it("handles PR with missing base.repo without throwing", async () => {
+  test("handles PR with missing base.repo without throwing", async () => {
     const token = "test-token";
     const notifications = [
       {
@@ -70,7 +88,7 @@ describe("processNotifications", () => {
     expect(result[0].backlinkCount).toBeGreaterThanOrEqual(1);
   });
 
-  it("filters out draft PRs", async () => {
+  test("filters out draft PRs", async () => {
     const token = "test-token";
     const devpoolRepos = new Set(["owner/repo"]);
     const notifications: GitHubNotifications = [];
@@ -89,7 +107,7 @@ describe("processNotifications", () => {
     expect(result).toHaveLength(0);
   });
 
-  it("filters out closed issues", () => {
+  test("filters out closed issues", () => {
     const token = "test-token";
     const devpoolRepos = new Set(["owner/repo"]);
     const notifications: GitHubNotifications = [];

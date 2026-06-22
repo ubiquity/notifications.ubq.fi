@@ -27,6 +27,11 @@ export async function displayGitHubUserInformation(gitHubUser: GitHubUser) {
 
   authenticatedDivElement.addEventListener("click", async function signOut() {
     const supabase = getSupabase();
+    if (!supabase) {
+      renderErrorInModal(new Error("Supabase client unavailable"), "Error logging out");
+      return;
+    }
+
     const { error } = await supabase.auth.signOut();
     if (error) {
       renderErrorInModal(error, "Error logging out");
@@ -35,6 +40,7 @@ export async function displayGitHubUserInformation(gitHubUser: GitHubUser) {
     window.location.replace("/");
   });
 
+  if (!authenticationElement) throw new Error("authentication element not found");
   authenticationElement.appendChild(authenticatedDivElement);
   toolbar.setAttribute("data-authenticated", "true");
   toolbar.classList.add("ready");
