@@ -1,3 +1,4 @@
+import { beforeEach, describe, expect, spyOn, test } from "bun:test";
 import "fake-indexeddb/auto";
 import {
   saveNotificationsToCache,
@@ -8,12 +9,18 @@ import {
 } from "../src/home/getters/get-indexed-db";
 import { GitHubNotifications } from "../src/home/github-types";
 
+// In Bun, `fake-indexeddb/auto` installs on `window` when it exists.
+// Ensure the global `indexedDB` binding is available for app code.
+if (typeof indexedDB === "undefined" && typeof window !== "undefined" && window.indexedDB) {
+  (globalThis as unknown as { indexedDB?: unknown }).indexedDB = window.indexedDB;
+}
+
 describe("IndexedDB cache functions", () => {
   beforeEach(async () => {
     await clearNotificationsCache();
   });
 
-  it("saves and retrieves notifications with TTL", async () => {
+  test("saves and retrieves notifications with TTL", async () => {
     const fetched = [
       {
         id: "1",
@@ -35,7 +42,7 @@ describe("IndexedDB cache functions", () => {
     expect(result[0].id).toBe("1");
   });
 
-  it("filters out expired items", async () => {
+  test("filters out expired items", async () => {
     const fetched = [
       {
         id: "1",
@@ -54,15 +61,15 @@ describe("IndexedDB cache functions", () => {
 
     // Mock time to make item expired (TTL is 5 minutes)
     const realNow = Date.now;
-    Date.now = jest.fn(() => realNow() + 10 * 60 * 1000); // 10 minutes later
+    const nowSpy = spyOn(Date, "now").mockImplementation(() => realNow() + 10 * 60 * 1000); // 10 minutes later
 
     const result = await getNotificationsFromCache();
     expect(result.length).toBe(0);
 
-    Date.now = realNow;
+    nowSpy.mockRestore();
   });
 
-  it("overwrites cache on save", async () => {
+  test("overwrites cache on save", async () => {
     const first = [
       {
         id: "old",
@@ -99,7 +106,7 @@ describe("IndexedDB cache functions", () => {
     expect(result[0].id).toBe("new");
   });
 
-  it("clears cache", async () => {
+  test("clears cache", async () => {
     await saveAggregatedNotificationsToCache([]);
     await clearNotificationsCache();
     const [raw, aggregated] = await Promise.all([getNotificationsFromCache(), getAggregatedNotificationsFromCache()]);

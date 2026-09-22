@@ -1,3 +1,41 @@
+import { afterEach, mock } from "bun:test";
+
+function readStoredSession() {
+  const stored = localStorage.getItem("sb-local-auth-token");
+  return stored ? JSON.parse(stored) : null;
+}
+
+void mock.module("@supabase/supabase-js", () => ({
+  createClient: mock(() => ({})),
+}));
+
+void mock.module("@octokit/rest", () => ({
+  Octokit: class {
+    request = mock(() => Promise.resolve({ data: [] }));
+  },
+}));
+
+void mock.module("@octokit/request-error", () => ({
+  RequestError: class RequestError extends Error {
+    status?: number;
+
+    constructor(message: string, status = 403) {
+      super(message);
+      this.status = status;
+    }
+  },
+}));
+
+void mock.module("../src/home/rendering/render-github-login-button", () => ({
+  authenticationElement: document.getElementById("authentication"),
+  checkSupabaseSession: mock(() => Promise.resolve(readStoredSession())),
+  getSupabase: mock(() => null),
+  gitHubLoginButton: document.createElement("button"),
+  renderAugmentAccessButton: mock(() => null),
+  renderGitHubLoginButton: mock(() => {}),
+  renderGitRevision: mock(() => {}),
+}));
+
 Object.assign(globalThis, {
   GIT_REVISION: "test",
   NODE_ENV: "test",
@@ -56,7 +94,7 @@ class MockIntersectionObserver implements IntersectionObserver {
     return [];
   }
 }
-globalThis.IntersectionObserver = MockIntersectionObserver;
+globalThis.IntersectionObserver = MockIntersectionObserver as unknown as typeof IntersectionObserver;
 
 // DOMParser mock (minimal)
 class MockDOMParser implements DOMParser {
@@ -73,12 +111,35 @@ class MockDOMParser implements DOMParser {
     return { body: fallbackBody } as unknown as Document;
   }
 }
-globalThis.DOMParser = MockDOMParser;
+globalThis.DOMParser = MockDOMParser as unknown as typeof DOMParser;
 
-// fetch mock using jest.fn to simulate fetch/json responses
-export const fetchMock = jest.fn(() => Promise.resolve({ json: async () => ({}) })) as unknown as jest.MockedFunction<typeof fetch>;
+// Build a fresh response object per call so consumers cannot share mutable state.
+function createFetchResponse(): Response {
+  const headers = typeof Headers !== "undefined" ? new Headers() : ({} as unknown as Headers);
+  const response = {
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    headers,
+    json: async () => ({}),
+    text: async () => "",
+    // clone() returns a genuinely new object with its own headers instead of a shared reference.
+    clone: () => createFetchResponse(),
+  };
+
+  return response as unknown as Response;
+}
+
+// fetch mock to simulate fetch/json responses
+export const fetchMock = mock(() => Promise.resolve(createFetchResponse())) as unknown as typeof fetch & {
+  mockClear: () => void;
+};
 globalThis.fetch = fetchMock as unknown as typeof fetch;
-afterEach(() => fetchMock.mockReset());
+
+afterEach(() => {
+  fetchMock.mockClear();
+  globalThis.fetch = fetchMock as unknown as typeof fetch;
+});
 
 // URL.createObjectURL mock
 globalThis.URL.createObjectURL = (() => "blob://mock") as typeof URL.createObjectURL;

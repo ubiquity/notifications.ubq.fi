@@ -1,24 +1,31 @@
-jest.mock('../src/home/rendering/render-preview-modal');
+import { beforeEach, describe, expect, mock, test } from "bun:test";
 
-import { setLocalStore, getLocalStore } from '../src/home/getters/get-local-store';
+void mock.module("../src/home/rendering/render-preview-modal", () => ({
+  modal: document.createElement("div"),
+  modalBodyInner: document.createElement("div"),
+  titleAnchor: document.createElement("a"),
+  titleHeader: document.createElement("h2"),
+}));
 
-describe('setLocalStore and getLocalStore', () => {
+const { setLocalStore, getLocalStore } = await import("../src/home/getters/get-local-store");
+
+describe("setLocalStore and getLocalStore", () => {
   beforeEach(() => {
     localStorage.clear();
     document.body.innerHTML = '<div id="modal"></div>';
   });
 
-  it('round-trips string[]', () => {
-    const key = 'viewed-notifications';
-    const value: string[] = ['1', '2'];
+  test("round-trips string[]", () => {
+    const key = "viewed-notifications";
+    const value: string[] = ["1", "2"];
     setLocalStore(key, value);
     const result = getLocalStore<string[]>(key);
     expect(result).toEqual(value);
   });
 
-  it('round-trips OAuthToken object', () => {
-    const key = 'auth-token';
-    const value = { provider_token: 'token123', expires_at: 123456 };
+  test("round-trips OAuthToken object", () => {
+    const key = "auth-token";
+    const value = { provider_token: "token123", expires_at: 123456 };
     setLocalStore(key, value);
     const result = getLocalStore<typeof value>(key);
     expect(result).toEqual(value);

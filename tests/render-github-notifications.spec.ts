@@ -1,4 +1,4 @@
-/** @jest-environment jsdom */
+import { beforeEach, describe, expect, mock, test } from "bun:test";
 
 type TestGlobals = typeof globalThis & {
   SUPABASE_URL: string;
@@ -6,23 +6,20 @@ type TestGlobals = typeof globalThis & {
   fetch: typeof fetch;
 };
 
-const testGlobals = global as TestGlobals;
+const testGlobals = globalThis as TestGlobals;
 testGlobals.SUPABASE_URL = "test";
 testGlobals.SUPABASE_ANON_KEY = "test";
-document.body.innerHTML = '<div id="issues-container"></div>';
+const notificationsContainer = document.createElement("div");
+notificationsContainer.id = "issues-container";
+document.body.replaceChildren(notificationsContainer);
 
-jest.mock("@supabase/supabase-js", () => ({
-  createClient: jest.fn(() => ({})),
-}));
-// Mock home module to avoid importing src/home/home.ts (which pulls auth setup)
-jest.mock("../src/home/home", () => ({
-  get notificationsContainer() {
-    // Resolve the container dynamically to match the current DOM set in beforeEach
-    return document.getElementById("issues-container") as HTMLDivElement;
-  },
+const getGitHubAccessTokenMock = mock(() => Promise.resolve("token"));
+
+void mock.module("../src/home/home", () => ({
+  notificationsContainer,
   shouldShowBotNotifications: false,
 }));
-jest.mock("../src/home/rendering/render-preview-modal", () => {
+void mock.module("../src/home/rendering/render-preview-modal", () => {
   const modal = document.createElement("div");
   modal.id = "preview-modal";
   modal.innerHTML = '<button class="close-preview"></button><div class="modal-content"></div><div class="modal-toolbar"></div>';
@@ -33,19 +30,34 @@ jest.mock("../src/home/rendering/render-preview-modal", () => {
     titleHeader: document.createElement("h2"),
   };
 });
-jest.mock("../src/home/rendering/render-github-login-button");
-jest.mock("../src/home/getters/get-github-access-token", () => ({
-  getGitHubAccessToken: jest.fn(),
+void mock.module("../src/home/rendering/render-github-login-button", () => ({
+  authenticationElement: document.getElementById("authentication"),
+  checkSupabaseSession: mock(() => Promise.resolve(null)),
+  getSupabase: mock(() => null),
+  gitHubLoginButton: document.createElement("button"),
+  renderAugmentAccessButton: mock(() => null),
+  renderGitHubLoginButton: mock(() => {}),
+  renderGitRevision: mock(() => {}),
+}));
+void mock.module("../src/home/getters/get-github-access-token", () => ({
+  getGitHubAccessToken: getGitHubAccessTokenMock,
+  clearStoredSession: mock(() => {}),
+  getGitHubUserName: mock(() => null),
+}));
+void mock.module("../src/home/getters/get-viewer-login", () => ({
+  resolveViewerLogin: mock(() => Promise.resolve(null)),
 }));
 
-import { renderNotifications } from "../src/home/rendering/render-github-notifications";
-import { getGitHubAccessToken } from "../src/home/getters/get-github-access-token";
-import { GitHubAggregated } from "../src/home/github-types";
+import type { GitHubAggregated } from "../src/home/github-types";
+
+const { renderNotifications } = await import("../src/home/rendering/render-github-notifications");
 
 describe("renderNotifications", () => {
   beforeEach(() => {
-    document.body.innerHTML = '<div id="issues-container"></div>';
-    window.scrollTo = jest.fn();
+    notificationsContainer.innerHTML = "";
+    notificationsContainer.className = "";
+    document.body.replaceChildren(notificationsContainer);
+    window.scrollTo = mock();
     class NoopIntersectionObserver implements IntersectionObserver {
       readonly root: Element | null = null;
       readonly rootMargin = "";
@@ -58,18 +70,23 @@ describe("renderNotifications", () => {
       }
     }
     globalThis.IntersectionObserver = NoopIntersectionObserver as unknown as typeof IntersectionObserver;
-    const fetchMock = jest.fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>().mockResolvedValue({
-      json: jest.fn().mockResolvedValue({
-        user: { login: "testuser", type: "User", avatar_url: "https://example.com/avatar.png" },
-        html_url: "https://github.com/testuser",
-        body: "Comment body",
-      }),
-    } as unknown as Response);
-    testGlobals.fetch = fetchMock;
-    (getGitHubAccessToken as jest.Mock).mockReturnValue(null);
+    const fetchMock = mock(() =>
+      Promise.resolve({
+        ok: true,
+        json: mock(() =>
+          Promise.resolve({
+            user: { login: "testuser", type: "User", avatar_url: "https://example.com/avatar.png" },
+            html_url: "https://github.com/testuser",
+            body: "Comment body",
+          })
+        ),
+      } as unknown as Response)
+    );
+    testGlobals.fetch = fetchMock as unknown as typeof fetch;
+    getGitHubAccessTokenMock.mockResolvedValue("token");
   });
 
-  it("appends issue-element-inner with mocked fetch", async () => {
+  test("appends issue-element-inner with mocked fetch", async () => {
     const notifications = [
       {
         notification: {

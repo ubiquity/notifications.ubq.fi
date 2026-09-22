@@ -1,0 +1,15 @@
+[test]
+preload = ["./tests/happydom-setup.ts", "./tests/setup-env.ts"]
+coverage = true
+coverageReporter = ["text", "lcov"]
+coverageDir = "./coverage"
+coverageSkipTestFiles = true
+coveragePathIgnorePatterns = [
+  "build/**",
+  "src/home/fetch-github/test-all-notifications.ts",
+  "tests/**",
+  "test/**"
+]
+
+[test.reporter]
+junit = "./junit.xml"

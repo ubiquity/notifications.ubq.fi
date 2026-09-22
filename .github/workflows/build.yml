@@ -26,6 +26,39 @@ jobs:
       - name: Install dependencies
         run: deno install
 
+      - name: Install Bun
+        run: |
+          set -euo pipefail
+          curl -fsSL https://bun.sh/install | bash -s "bun-v$(cat .bun-version)"
+          echo "${HOME}/.bun/bin" >> "$GITHUB_PATH"
+
+      - name: Show Bun version
+        run: bun --version
+
+      - name: Cache Bun dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lockb', 'bun.lock', 'package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install test dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Test
+        run: bun test
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            junit.xml
+            coverage/**
+          if-no-files-found: ignore
+
       - name: Build
         run: deno task build
         env: # Set environment variables for the build
