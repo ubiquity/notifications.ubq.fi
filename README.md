@@ -36,3 +36,18 @@ open http://localhost:8080
 #### Mobile
 
 ![screenshot 2](https://github.com/ubiquity/devpool-directory-ui/assets/4975670/b7861ce7-1f1f-49a9-b8e2-ebb20724ee67)
+
+## Hosting
+
+Production runs on Cloudflare Workers as the `notifications-ubq-fi` worker: the
+built `static/` tree is deployed as static assets (see `wrangler.toml`) and the
+zone route `notifications.ubq.fi/*` points at it. Deno Deploy is no longer used
+(Deno Deploy shuts down in April 2027).
+
+Build and deploy:
+
+```sh
+bun install
+SUPABASE_URL=... SUPABASE_ANON_KEY=... deno task build   # org-level Supabase secrets
+npx wrangler deploy
+```
