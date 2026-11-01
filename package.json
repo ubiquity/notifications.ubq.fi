@@ -2,18 +2,18 @@
   "name": "@ubiquity/notifications.ubq.fi",
   "version": "1.0.0",
   "description": "The GitHub notifications viewer for UbiquityOS.",
-  "packageManager": "bun@1.3.3",
+  "packageManager": "bun@1.3.4",
   "main": "build/index.ts",
   "author": "Ubiquity DAO",
   "license": "MIT",
   "engines": {
-    "node": ">=20.10.0"
+    "bun": ">=1.3.4"
   },
   "scripts": {
-    "dev": "tsx build/esbuild-server.ts",
-    "start": "tsx build/esbuild-server.ts",
-    "build": "deno task build",
-    "notifications:cli": "tsx src/cli/notifications-cli.ts",
+    "dev": "bun run build/esbuild-server.ts",
+    "start": "bun run build/esbuild-server.ts",
+    "build": "bun run build/esbuild-build.ts",
+    "notifications:cli": "bun run src/cli/notifications-cli.ts",
     "format": "run-s format:lint format:prettier format:cspell",
     "format:lint": "eslint --fix .",
     "format:prettier": "prettier --write .",
@@ -21,7 +21,9 @@
     "knip": "knip --config .github/knip.ts",
     "knip-ci": "knip --no-exit-code --reporter json --config .github/knip.ts",
     "prepare": "husky install",
-    "test": "bun test"
+    "test": "bun test",
+    "lint": "bun run --bun eslint . --ext .ts",
+    "typecheck": "bun run --bun tsc --noEmit"
   },
   "keywords": [
     "typescript",

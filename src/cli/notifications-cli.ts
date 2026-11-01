@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 import { fetchIssues, fetchNotifications, fetchPullRequests, processNotifications } from "../home/fetch-github/fetch-data";
 import { GitHubAggregated, GitHubLabel } from "../home/github-types";
 import { sortIssuesController } from "../home/sorting/sort-controller";
