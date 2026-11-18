@@ -2,6 +2,9 @@
 
 ## Development Setup
 
+Use Bun 1.3.4 or newer (the pinned version is in `.bun-version`). Bun runs the
+development server, build scripts, CLI, and tests.
+
 ```sh
 cp .env.example .env
 ```
@@ -10,9 +13,32 @@ Ensure that `SUPABASE_URL` and `SUPABASE_ANON_KEY` are set. This is for GitHub u
 
 ```sh
 bun install
-bun run start
+bun run dev
 open http://localhost:8080
 ```
+
+### Checks and production build
+
+```sh
+bun run lint
+bun run typecheck
+bun test
+bun run build
+```
+
+Tests use `bun:test` with happy-dom preloaded via `bunfig.toml`. Each test run
+writes a JUnit report to `junit.xml` and coverage reports to `coverage/`; these
+generated files are ignored by Git. Use `bun ci` for a reproducible install from
+the committed `bun.lockb` without updating dependencies.
+
+To exercise notifications without the UI (requires a GitHub token):
+
+```sh
+bun run notifications:cli --json
+```
+
+Set `GITHUB_TOKEN` in your environment before running the CLI. It never marks
+notifications as read.
 
 ### Automatic Light Mode
 
@@ -48,6 +74,6 @@ Build and deploy:
 
 ```sh
 bun install
-SUPABASE_URL=... SUPABASE_ANON_KEY=... deno task build   # org-level Supabase secrets
-npx wrangler deploy
+bun run build          # uses SUPABASE_URL and SUPABASE_ANON_KEY from the environment
+bun run wrangler deploy
 ```
