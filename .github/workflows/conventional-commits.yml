@@ -9,4 +9,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: ubiquity/action-conventional-commits@master
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+      - name: Install dependencies
+        run: bun ci
+      # Share the commit policy with the local commit-msg hook, including automation types.
+      - name: Check commit messages
+        shell: bash
+        run: |
+          jq -c '.commits[]' "$GITHUB_EVENT_PATH" | while IFS= read -r commit; do
+            jq -r '.message' <<< "$commit" | bun run --bun commitlint --verbose
+          done
